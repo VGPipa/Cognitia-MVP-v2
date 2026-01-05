@@ -289,7 +289,7 @@ export type Database = {
           id_guia_tema: string | null
           id_guia_version_actual: string | null
           id_profesor: string
-          id_tema: string
+          id_tema: string | null
           materiales: Json | null
           metodologia: string | null
           nivel: string | null
@@ -316,7 +316,7 @@ export type Database = {
           id_guia_tema?: string | null
           id_guia_version_actual?: string | null
           id_profesor: string
-          id_tema: string
+          id_tema?: string | null
           materiales?: Json | null
           metodologia?: string | null
           nivel?: string | null
@@ -343,7 +343,7 @@ export type Database = {
           id_guia_tema?: string | null
           id_guia_version_actual?: string | null
           id_profesor?: string
-          id_tema?: string
+          id_tema?: string | null
           materiales?: Json | null
           metodologia?: string | null
           nivel?: string | null
