@@ -17,6 +17,11 @@ import { useClases, type Clase } from '@/hooks/useClases';
 import { useGuiasClase } from '@/hooks/useGuias';
 import { useQuizzes } from '@/hooks/useQuizzes';
 import { useTemasProfesor } from '@/hooks/useTemasProfesor';
+import { useAreasCurriculares } from '@/hooks/useAreasCurriculares';
+import { useCompetenciasCNEB } from '@/hooks/useCompetenciasCNEB';
+import { useCapacidadesCNEB } from '@/hooks/useCapacidadesCNEB';
+import { useEnfoquesTransversales } from '@/hooks/useEnfoquesTransversales';
+import { useTiposAdaptacion } from '@/hooks/useTiposAdaptacion';
 import { supabase } from '@/integrations/supabase/client';
 import { generateGuiaClase, generateQuizPre, generateQuizPost, type GuiaClaseData, type QuizPreData, type QuizPostData } from '@/lib/ai/generate';
 import {
@@ -43,7 +48,8 @@ import {
   User,
   Rocket,
   ImageIcon,
-  Eye
+  Eye,
+  Settings
 } from 'lucide-react';
 
 const STEPS = [
@@ -54,13 +60,27 @@ const STEPS = [
   { id: 5, title: 'Validar', icon: FileCheck }
 ];
 
-const RECURSOS = [
-  { id: 'proyector', nombre: 'Proyector/Pantalla' },
-  { id: 'pizarra', nombre: 'Pizarra' },
-  { id: 'libros', nombre: 'Libros de texto' },
-  { id: 'dispositivos', nombre: 'Dispositivos electrónicos' },
-  { id: 'material', nombre: 'Material manipulativo' },
-  { id: 'otro', nombre: 'Otro' }
+const MATERIALES_DISPONIBLES = [
+  { id: 'computadoras', nombre: 'Computadoras' },
+  { id: 'proyector', nombre: 'Proyector / TV' },
+  { id: 'patio', nombre: 'Patio / espacio libre' },
+  { id: 'material_impreso', nombre: 'Material impreso' },
+  { id: 'celular', nombre: 'Computador / Celular' }
+];
+
+const NIVELES = [
+  { id: 'primaria', nombre: 'Primaria' },
+  { id: 'secundaria', nombre: 'Secundaria' }
+];
+
+const GRADOS_PRIMARIA = ['1°', '2°', '3°', '4°', '5°', '6°'];
+const GRADOS_SECUNDARIA = ['1°', '2°', '3°', '4°', '5°'];
+
+const DURACIONES = [
+  { value: 45, label: '45 minutos' },
+  { value: 55, label: '55 minutos' },
+  { value: 60, label: '60 minutos' },
+  { value: 90, label: '90 minutos' }
 ];
 
 export default function GenerarClase() {
@@ -106,14 +126,35 @@ export default function GenerarClase() {
   // Check if class is completed (read-only mode)
   const isClaseCompletada = claseData?.estado === 'completada';
   
-  // Form state
+  // Form state - Updated for CNEB
   const [formData, setFormData] = useState({
     fecha: '',
     duracion: 55,
-    recursos: [] as string[],
+    nivel: '' as string,
+    grado: '' as string,
+    areaAcademica: '' as string,
+    // Propósitos de aprendizaje
+    competencias: [] as string[],
+    capacidades: [] as string[],
+    desempeno: '' as string,
+    enfoqueTransversal: '' as string,
+    // Materiales
+    materiales: [] as string[],
+    materialOtro: '' as string,
+    // Adaptaciones
+    adaptaciones: [] as string[],
+    adaptacionesPersonalizadas: '' as string,
+    // Legacy/Extraordinaria
     contexto: '',
-    temaPersonalizado: '' // For extraordinaria mode
+    temaPersonalizado: ''
   });
+
+  // CNEB Data hooks
+  const { areas } = useAreasCurriculares();
+  const { competencias: competenciasCNEB } = useCompetenciasCNEB(formData.areaAcademica);
+  const { capacidades: capacidadesCNEB } = useCapacidadesCNEB(formData.competencias);
+  const { enfoques } = useEnfoquesTransversales();
+  const { tiposAdaptacion } = useTiposAdaptacion();
 
   // Generated content
   const [guiaGenerada, setGuiaGenerada] = useState<GuiaClaseData | null>(null);
@@ -550,7 +591,17 @@ export default function GenerarClase() {
     setFormData({
       fecha: new Date().toISOString().split('T')[0],
       duracion: 55,
-      recursos: [],
+      nivel: '',
+      grado: '',
+      areaAcademica: '',
+      competencias: [],
+      capacidades: [],
+      desempeno: '',
+      enfoqueTransversal: '',
+      materiales: [],
+      materialOtro: '',
+      adaptaciones: [],
+      adaptacionesPersonalizadas: '',
       contexto: '',
       temaPersonalizado: ''
     });
@@ -688,13 +739,21 @@ export default function GenerarClase() {
       const guia = await generateGuiaClase(
         temaNombre,
         formData.contexto,
-        formData.recursos,
+        formData.materiales,
         {
-          grado: grupoData?.grado,
+          grado: formData.grado || grupoData?.grado,
+          nivel: formData.nivel,
           seccion: grupoData?.seccion,
           numeroEstudiantes: grupoData?.cantidad_alumnos,
           duracion: formData.duracion,
-          area: cursoData?.nombre
+          area: cursoData?.nombre,
+          competencias: formData.competencias.map(id => competenciasCNEB.find(c => c.id === id)?.nombre || ''),
+          capacidades: formData.capacidades.map(id => capacidadesCNEB.find(c => c.id === id)?.nombre || ''),
+          desempeno: formData.desempeno,
+          enfoqueTransversal: enfoques.find(e => e.id === formData.enfoqueTransversal)?.nombre,
+          adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
+          adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
+          materiales: formData.materiales
         }
       );
 
@@ -703,8 +762,8 @@ export default function GenerarClase() {
       // Save to DB with new schema content
       const guiaVersion = await createGuiaVersion.mutateAsync({
         id_clase: clase.id,
-        objetivos: `Cognitivo: ${guia.objetivos_aprendizaje.cognitivo}\nHumano: ${guia.objetivos_aprendizaje.humano}`,
-        estructura: guia.secuencia_didactica,
+        objetivos: guia.propositos_aprendizaje.map(p => p.competencia).join('\n'),
+        estructura: guia.momentos_sesion,
         contenido: guia, // Save full new schema
         preguntas_socraticas: [], // No longer generated in new prompt
         generada_ia: true,
@@ -788,13 +847,21 @@ export default function GenerarClase() {
         generateGuiaClase(
           temaNombre,
           formData.contexto,
-          formData.recursos,
+          formData.materiales,
           {
-            grado: grupoData?.grado,
+            grado: formData.grado || grupoData?.grado,
+            nivel: formData.nivel,
             seccion: grupoData?.seccion,
             numeroEstudiantes: grupoData?.cantidad_alumnos,
             duracion: formData.duracion,
-            area: cursoData?.nombre
+            area: cursoData?.nombre,
+            competencias: formData.competencias.map(id => competenciasCNEB.find(c => c.id === id)?.nombre || ''),
+            capacidades: formData.capacidades.map(id => capacidadesCNEB.find(c => c.id === id)?.nombre || ''),
+            desempeno: formData.desempeno,
+            enfoqueTransversal: enfoques.find(e => e.id === formData.enfoqueTransversal)?.nombre,
+            adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
+            adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
+            materiales: formData.materiales
           }
         ),
         // Generate quiz PRE (without guia info initially)
@@ -822,8 +889,8 @@ export default function GenerarClase() {
         // Save guía to DB
         const guiaVersion = await createGuiaVersion.mutateAsync({
           id_clase: clase.id,
-          objetivos: `Cognitivo: ${guia.objetivos_aprendizaje.cognitivo}\nHumano: ${guia.objetivos_aprendizaje.humano}`,
-          estructura: guia.secuencia_didactica,
+          objetivos: guia.propositos_aprendizaje.map(p => p.competencia).join('\n'),
+          estructura: guia.momentos_sesion,
           contenido: guia,
           preguntas_socraticas: [],
           generada_ia: true,
@@ -994,14 +1061,14 @@ export default function GenerarClase() {
 
       // Extract enriched info from guia for better quiz generation with concept alignment
       const guiaInfo = guiaGenerada ? {
-        objetivo_cognitivo: guiaGenerada.objetivos_aprendizaje.cognitivo,
-        objetivo_humano: guiaGenerada.objetivos_aprendizaje.humano,
-        desempeno_cneb: guiaGenerada.curriculo_peru.desempeno_precisado,
-        actividad_inicio: guiaGenerada.secuencia_didactica.find(s => s.fase === 'INICIO')?.actividad_detallada,
-        actividad_desarrollo: guiaGenerada.secuencia_didactica.find(s => s.fase === 'DESARROLLO')?.actividad_detallada,
-        criterios_evaluacion: guiaGenerada.recursos_y_evaluacion.criterios_evaluacion,
-        capacidad_cneb: guiaGenerada.curriculo_peru.capacidad,
-        habilidad_foco: guiaGenerada.secuencia_didactica.find(s => s.fase === 'DESARROLLO')?.habilidad_foco
+        objetivo_cognitivo: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
+        objetivo_humano: guiaGenerada.enfoques_transversales[0]?.descripcion || '',
+        desempeno_cneb: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
+        actividad_inicio: guiaGenerada.momentos_sesion.find(s => s.fase === 'INICIO')?.actividades,
+        actividad_desarrollo: guiaGenerada.momentos_sesion.find(s => s.fase === 'DESARROLLO')?.actividades,
+        criterios_evaluacion: guiaGenerada.propositos_aprendizaje.map(p => p.evidencia_aprendizaje),
+        capacidad_cneb: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
+        habilidad_foco: guiaGenerada.datos_generales.area_academica
       } : undefined;
 
       // Generate quiz with AI using new edge function
@@ -1089,15 +1156,15 @@ export default function GenerarClase() {
 
       // Extract enriched info from guia for better quiz generation
       const guiaInfo = guiaGenerada ? {
-        objetivo_humano: guiaGenerada.objetivos_aprendizaje.humano,
-        objetivo_aprendizaje: guiaGenerada.objetivos_aprendizaje.cognitivo,
-        competencia: guiaGenerada.curriculo_peru.competencia,
-        capacidad: guiaGenerada.curriculo_peru.capacidad,
-        desempeno_cneb: guiaGenerada.curriculo_peru.desempeno_precisado,
-        enfoque_transversal: guiaGenerada.curriculo_peru.enfoque_transversal,
-        actividad_desarrollo: guiaGenerada.secuencia_didactica.find(s => s.fase === 'DESARROLLO')?.actividad_detallada,
-        actividad_cierre: guiaGenerada.secuencia_didactica.find(s => s.fase === 'CIERRE')?.actividad_detallada,
-        criterios_evaluacion: guiaGenerada.recursos_y_evaluacion.criterios_evaluacion
+        objetivo_humano: guiaGenerada.enfoques_transversales[0]?.descripcion || '',
+        objetivo_aprendizaje: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
+        competencia: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
+        capacidad: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
+        desempeno_cneb: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
+        enfoque_transversal: guiaGenerada.enfoques_transversales[0]?.nombre || '',
+        actividad_desarrollo: guiaGenerada.momentos_sesion.find(s => s.fase === 'DESARROLLO')?.actividades,
+        actividad_cierre: guiaGenerada.momentos_sesion.find(s => s.fase === 'CIERRE')?.actividades,
+        criterios_evaluacion: guiaGenerada.propositos_aprendizaje.map(p => p.evidencia_aprendizaje)
       } : undefined;
 
       // Generate quiz with AI using new edge function
@@ -1504,7 +1571,7 @@ export default function GenerarClase() {
       {/* Step content */}
       <Card>
         <CardContent className="p-6">
-          {/* Step 1: Context */}
+          {/* Step 1: Context - Nuevo diseño con 4 secciones */}
           {currentStep === 1 && (
             <div className="space-y-6">
               {/* Read-only mode banner for completed classes */}
@@ -1517,112 +1584,134 @@ export default function GenerarClase() {
                 </div>
               )}
               
-              <div>
-                <h2 className="text-lg font-semibold mb-4">Información de la Clase</h2>
+              {/* SECCIÓN 1: DATOS */}
+              <fieldset className="p-4 border rounded-lg space-y-4">
+                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  Datos
+                </legend>
+                
                 <div className="grid md:grid-cols-2 gap-4">
-                    {/* Curso */}
+                  {/* Tema */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
-                        Curso {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
+                      Tema {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
                     </Label>
-                      {isExtraordinaria ? (
-                        <Select 
-                          value={cursoData?.id || ''} 
-                          onValueChange={(value) => {
-                            const curso = cursos.find(c => c?.id === value);
-                            setCursoData(curso);
-                          }}
-                          disabled={isClaseCompletada}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un curso" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cursos.filter(Boolean).map(c => (
-                              <SelectItem key={c!.id} value={c!.id}>{c!.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input value={cursoData?.nombre || ''} disabled />
-                      )}
-                  </div>
-
-                    {/* Tema */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                        Tema {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
-                        {isExtraordinaria && '*'}
-                    </Label>
-                      {isExtraordinaria ? (
-                        <Select 
-                          value={temaData?.id || ''} 
-                          onValueChange={(value) => {
-                            const tema = temasParaCurso.find(t => t.id === value);
-                            setTemaData(tema || null);
-                            // Pre-fill custom name with tema name
-                            if (tema && !formData.temaPersonalizado) {
-                              setFormData(prev => ({...prev, temaPersonalizado: tema.nombre}));
-                            }
-                          }}
-                          disabled={!cursoData || isClaseCompletada}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={cursoData ? "Selecciona un tema" : "Primero selecciona un curso"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {temasParaCurso.map(t => (
-                              <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input value={temaData?.nombre || ''} disabled />
-                      )}
-                  </div>
-
-                    {/* Nombre personalizado del tema (solo extraordinaria) */}
-                    {isExtraordinaria && temaData && (
-                  <div className="space-y-2">
-                        <Label>Nombre personalizado (opcional)</Label>
-                        <Input 
-                          value={formData.temaPersonalizado} 
-                          onChange={(e) => setFormData({...formData, temaPersonalizado: e.target.value})}
-                          placeholder="Personaliza el nombre del tema si lo deseas"
-                          disabled={isClaseCompletada}
-                        />
-                  </div>
+                    {isExtraordinaria ? (
+                      <Input 
+                        value={formData.temaPersonalizado} 
+                        onChange={(e) => setFormData({...formData, temaPersonalizado: e.target.value})}
+                        placeholder="Escribe el tema de la clase"
+                        disabled={isClaseCompletada}
+                      />
+                    ) : (
+                      <Input value={temaData?.nombre || ''} disabled />
                     )}
+                  </div>
 
-                    {/* Grupo */}
+                  {/* Duración */}
+                  <div className="space-y-2">
+                    <Label>Duración de la sesión</Label>
+                    <Select 
+                      value={String(formData.duracion)} 
+                      onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
+                      disabled={isClaseCompletada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURACIONES.map(d => (
+                          <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Nivel */}
+                  <div className="space-y-2">
+                    <Label>Nivel</Label>
+                    <Select 
+                      value={formData.nivel} 
+                      onValueChange={(value) => setFormData({...formData, nivel: value, grado: ''})}
+                      disabled={isClaseCompletada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona nivel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NIVELES.map(n => (
+                          <SelectItem key={n.id} value={n.id}>{n.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Grado */}
+                  <div className="space-y-2">
+                    <Label>Grado</Label>
+                    <Select 
+                      value={formData.grado} 
+                      onValueChange={(value) => setFormData({...formData, grado: value})}
+                      disabled={isClaseCompletada || !formData.nivel}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.nivel ? "Selecciona grado" : "Primero selecciona nivel"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(formData.nivel === 'primaria' ? GRADOS_PRIMARIA : GRADOS_SECUNDARIA).map(g => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Área Académica */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Área Académica</Label>
+                    <Select 
+                      value={formData.areaAcademica} 
+                      onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidades: []})}
+                      disabled={isClaseCompletada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un área" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {areas.map(area => (
+                          <SelectItem key={area.id} value={area.id}>{area.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Grupo (solo extraordinaria) */}
+                  {isExtraordinaria && (
                     <div className="space-y-2">
-                      <Label>Grupo {isExtraordinaria && '*'}</Label>
-                      {isExtraordinaria ? (
-                        <Select 
-                          value={grupoData?.id || ''} 
-                          onValueChange={(value) => {
-                            const grupo = grupos.find(g => g?.id === value);
-                            setGrupoData(grupo);
-                          }}
-                          disabled={isClaseCompletada}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un grupo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {grupos.filter(Boolean).map(g => (
-                              <SelectItem key={g!.id} value={g!.id}>
-                                {g!.nombre || `${g!.grado}° ${g!.seccion || ''}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input value={grupoData?.nombre || `${grupoData?.grado} ${grupoData?.seccion || ''}`.trim()} disabled />
-                      )}
+                      <Label>Grupo *</Label>
+                      <Select 
+                        value={grupoData?.id || ''} 
+                        onValueChange={(value) => {
+                          const grupo = grupos.find(g => g?.id === value);
+                          setGrupoData(grupo);
+                        }}
+                        disabled={isClaseCompletada}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un grupo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {grupos.filter(Boolean).map(g => (
+                            <SelectItem key={g!.id} value={g!.id}>
+                              {g!.nombre || `${g!.grado}° ${g!.seccion || ''}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+                  )}
 
-                    {/* Fecha */}
+                  {/* Fecha */}
                   <div className="space-y-2">
                     <Label>Fecha programada</Label>
                     <DatePicker
@@ -1632,47 +1721,192 @@ export default function GenerarClase() {
                       disabled={isClaseCompletada}
                     />
                   </div>
+                </div>
+              </fieldset>
 
-                    {/* Duración */}
+              {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE */}
+              <fieldset className="p-4 border rounded-lg space-y-4">
+                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  Propósitos de Aprendizaje
+                </legend>
+                
+                <div className="grid gap-4">
+                  {/* Competencias */}
                   <div className="space-y-2">
-                    <Label>Duración (minutos)</Label>
-                    <Input 
-                      type="number" 
-                      value={formData.duracion} 
-                      onChange={(e) => setFormData({...formData, duracion: parseInt(e.target.value)})}
+                    <Label>Competencias (selección múltiple)</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                      {formData.areaAcademica ? (
+                        competenciasCNEB.map(comp => (
+                          <Badge
+                            key={comp.id}
+                            variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
+                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                            onClick={() => {
+                              if (!isClaseCompletada) {
+                                const newComps = formData.competencias.includes(comp.id)
+                                  ? formData.competencias.filter(c => c !== comp.id)
+                                  : [...formData.competencias, comp.id];
+                                setFormData({...formData, competencias: newComps, capacidades: []});
+                              }
+                            }}
+                          >
+                            {comp.nombre}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Capacidades */}
+                  <div className="space-y-2">
+                    <Label>Capacidades (selección múltiple)</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                      {formData.competencias.length > 0 ? (
+                        capacidadesCNEB.map(cap => (
+                          <Badge
+                            key={cap.id}
+                            variant={formData.capacidades.includes(cap.id) ? 'default' : 'outline'}
+                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                            onClick={() => {
+                              if (!isClaseCompletada) {
+                                const newCaps = formData.capacidades.includes(cap.id)
+                                  ? formData.capacidades.filter(c => c !== cap.id)
+                                  : [...formData.capacidades, cap.id];
+                                setFormData({...formData, capacidades: newCaps});
+                              }
+                            }}
+                          >
+                            {cap.nombre}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Primero selecciona competencias</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desempeño */}
+                  <div className="space-y-2">
+                    <Label>Desempeño esperado</Label>
+                    <Textarea 
+                      placeholder="Describe el desempeño que se espera lograr en esta sesión..."
+                      value={formData.desempeno}
+                      onChange={(e) => setFormData({...formData, desempeno: e.target.value})}
+                      rows={2}
                       disabled={isClaseCompletada}
                     />
                   </div>
-                </div>
-              </div>
 
-                <div className="space-y-2">
-                  <Label>Recursos disponibles</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {RECURSOS.map((rec) => (
-                      <Badge
-                        key={rec.id}
-                        variant={formData.recursos.includes(rec.id) ? 'default' : 'outline'}
-                        className={isClaseCompletada ? "cursor-not-allowed opacity-60" : "cursor-pointer"}
-                        onClick={() => {
+                  {/* Enfoque Transversal */}
+                  <div className="space-y-2">
+                    <Label>Enfoque Transversal</Label>
+                    <Select 
+                      value={formData.enfoqueTransversal} 
+                      onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
+                      disabled={isClaseCompletada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un enfoque" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {enfoques.map(enfoque => (
+                          <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* SECCIÓN 3: MATERIALES DISPONIBLES */}
+              <fieldset className="p-4 border rounded-lg space-y-4">
+                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-primary" />
+                  Materiales Disponibles
+                </legend>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {MATERIALES_DISPONIBLES.map(mat => (
+                    <div key={mat.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`mat-${mat.id}`}
+                        checked={formData.materiales.includes(mat.id)}
+                        onCheckedChange={(checked) => {
                           if (!isClaseCompletada) {
-                            const newRec = formData.recursos.includes(rec.id)
-                              ? formData.recursos.filter(r => r !== rec.id)
-                              : [...formData.recursos, rec.id];
-                            setFormData({...formData, recursos: newRec});
+                            const newMats = checked 
+                              ? [...formData.materiales, mat.id]
+                              : formData.materiales.filter(m => m !== mat.id);
+                            setFormData({...formData, materiales: newMats});
                           }
                         }}
-                      >
-                        {rec.nombre}
-                      </Badge>
-                    ))}
+                        disabled={isClaseCompletada}
+                      />
+                      <Label htmlFor={`mat-${mat.id}`} className="cursor-pointer text-sm">{mat.nombre}</Label>
+                    </div>
+                  ))}
                 </div>
-              </div>
+                
+                <div className="space-y-2">
+                  <Label>Otro material (opcional)</Label>
+                  <Input 
+                    placeholder="Especifica otros materiales..."
+                    value={formData.materialOtro}
+                    onChange={(e) => setFormData({...formData, materialOtro: e.target.value})}
+                    disabled={isClaseCompletada}
+                  />
+                </div>
+              </fieldset>
 
+              {/* SECCIÓN 4: ADAPTACIONES */}
+              <fieldset className="p-4 border rounded-lg space-y-4">
+                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-primary" />
+                  Adaptaciones (NEE)
+                </legend>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {tiposAdaptacion.map(tipo => (
+                    <div key={tipo.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`adapt-${tipo.id}`}
+                        checked={formData.adaptaciones.includes(tipo.id)}
+                        onCheckedChange={(checked) => {
+                          if (!isClaseCompletada) {
+                            const newAdapts = checked 
+                              ? [...formData.adaptaciones, tipo.id]
+                              : formData.adaptaciones.filter(a => a !== tipo.id);
+                            setFormData({...formData, adaptaciones: newAdapts});
+                          }
+                        }}
+                        disabled={isClaseCompletada}
+                      />
+                      <Label htmlFor={`adapt-${tipo.id}`} className="cursor-pointer text-sm" title={tipo.descripcion || ''}>
+                        {tipo.nombre}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Otras adaptaciones (opcional)</Label>
+                  <Textarea 
+                    placeholder="Describe otras adaptaciones o consideraciones especiales..."
+                    value={formData.adaptacionesPersonalizadas}
+                    onChange={(e) => setFormData({...formData, adaptacionesPersonalizadas: e.target.value})}
+                    rows={2}
+                    disabled={isClaseCompletada}
+                  />
+                </div>
+              </fieldset>
+
+              {/* Contexto del salón */}
               <div className="space-y-2">
-                <Label>Contexto específico del salón *</Label>
+                <Label>Contexto específico del salón</Label>
                 <Textarea 
-                  placeholder="Describe el contexto del salón: conocimientos previos, necesidades especiales, dinámica del aula..."
+                  placeholder="Describe el contexto del salón: conocimientos previos, dinámica del aula, características del grupo..."
                   value={formData.contexto}
                   onChange={(e) => setFormData({...formData, contexto: e.target.value})}
                   rows={3}
@@ -1680,7 +1914,7 @@ export default function GenerarClase() {
                 />
               </div>
 
-              {/* Opción de generación en paralelo (para demo) */}
+              {/* Opción de generación en paralelo */}
               {!isClaseCompletada && (
                 <div className="flex items-center space-x-2 p-4 rounded-lg border bg-muted/30">
                   <Checkbox 
@@ -1690,9 +1924,9 @@ export default function GenerarClase() {
                   />
                   <Label htmlFor="generar-paralelo" className="cursor-pointer">
                     <div className="flex flex-col gap-1">
-                      <span className="font-medium">Generar todo en paralelo (Demo)</span>
+                      <span className="font-medium">Generar todo en paralelo</span>
                       <span className="text-xs text-muted-foreground">
-                        Genera la guía y ambos quizzes simultáneamente para acelerar el proceso
+                        Genera la guía y ambos quizzes simultáneamente
                       </span>
                     </div>
                   </Label>
@@ -1853,75 +2087,96 @@ export default function GenerarClase() {
                     </div>
                   </div>
 
-                  {/* Metadata Header */}
+                  {/* Datos Generales Header */}
                   <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
-                    <h3 className="text-lg font-bold text-primary mb-1">{guiaGenerada.metadata.titulo}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{guiaGenerada.metadata.resumen}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <h3 className="text-lg font-bold text-primary mb-1">{guiaGenerada.datos_generales.titulo_sesion}</h3>
+                    <div className="flex flex-wrap gap-2 mt-2">
                       <Badge variant="secondary" className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {guiaGenerada.metadata.duracion} min
+                        <GraduationCap className="w-3 h-3" />
+                        {guiaGenerada.datos_generales.nivel} - {guiaGenerada.datos_generales.grado}
                       </Badge>
                       <Badge variant="outline" className="flex items-center gap-1">
-                        <GraduationCap className="w-3 h-3" />
-                        {guiaGenerada.metadata.grado_sugerido}
+                        <BookOpen className="w-3 h-3" />
+                        {guiaGenerada.datos_generales.area_academica}
                       </Badge>
                     </div>
                   </div>
 
-                  {/* Currículo CNEB */}
+                  {/* Propósitos de Aprendizaje - Table */}
                   <div className="p-4 rounded-lg border bg-card">
                     <h4 className="font-semibold flex items-center gap-2 mb-3">
-                      <BookOpen className="w-4 h-4 text-primary" />
-                      Alineación Curricular (CNEB)
+                      <Target className="w-4 h-4 text-primary" />
+                      Propósitos de Aprendizaje
                     </h4>
-                    <div className="grid gap-2 text-sm">
-                      <div className="flex gap-2">
-                        <span className="font-medium text-muted-foreground w-32">Área:</span>
-                        <span>{guiaGenerada.curriculo_peru.area}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-muted-foreground w-32">Competencia:</span>
-                        <span>{guiaGenerada.curriculo_peru.competencia}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-muted-foreground w-32">Capacidad:</span>
-                        <span>{guiaGenerada.curriculo_peru.capacidad}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-muted-foreground w-32">Desempeño:</span>
-                        <span>{guiaGenerada.curriculo_peru.desempeno_precisado}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-muted-foreground w-32">Enfoque:</span>
-                        <Badge variant="outline">{guiaGenerada.curriculo_peru.enfoque_transversal}</Badge>
-                      </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left p-2 font-medium">Competencia</th>
+                            <th className="text-left p-2 font-medium">Criterios de Evaluación</th>
+                            <th className="text-left p-2 font-medium">Evidencia</th>
+                            <th className="text-left p-2 font-medium">Instrumento</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {guiaGenerada.propositos_aprendizaje.map((prop, i) => (
+                            <tr key={i} className="border-b">
+                              <td className="p-2">{prop.competencia}</td>
+                              <td className="p-2">{prop.criterios_evaluacion}</td>
+                              <td className="p-2">{prop.evidencia_aprendizaje}</td>
+                              <td className="p-2">
+                                <Badge variant="secondary">{prop.instrumento_valoracion}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
-                  {/* Objetivos de Aprendizaje - Dual Pillars */}
+                  {/* Enfoques Transversales */}
+                  <div className="p-4 rounded-lg border bg-card">
+                    <h4 className="font-semibold flex items-center gap-2 mb-3">
+                      <Heart className="w-4 h-4 text-rose-500" />
+                      Enfoques Transversales
+                    </h4>
+                    <div className="flex flex-wrap gap-3">
+                      {guiaGenerada.enfoques_transversales.map((enfoque, i) => (
+                        <div key={i} className="p-3 rounded-lg bg-rose-50/50 border border-rose-200">
+                          <span className="font-medium text-rose-700">{enfoque.nombre}</span>
+                          <p className="text-sm text-muted-foreground mt-1">{enfoque.descripcion}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Preparación */}
                   <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50/50">
-                      <h4 className="font-semibold flex items-center gap-2 mb-2 text-blue-700">
-                        <Brain className="w-5 h-5" />
-                        Objetivo Cognitivo (Mente)
-                      </h4>
-                      <p className="text-sm">{guiaGenerada.objetivos_aprendizaje.cognitivo}</p>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <h4 className="font-semibold mb-3">¿Qué necesitamos hacer antes de la sesión?</h4>
+                      <p className="text-sm text-muted-foreground">{guiaGenerada.preparacion.antes_sesion}</p>
                     </div>
-                    <div className="p-4 rounded-lg border-2 border-rose-200 bg-rose-50/50">
-                      <h4 className="font-semibold flex items-center gap-2 mb-2 text-rose-700">
-                        <Heart className="w-5 h-5" />
-                        Objetivo Humano (Corazón)
-                      </h4>
-                      <p className="text-sm">{guiaGenerada.objetivos_aprendizaje.humano}</p>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <h4 className="font-semibold mb-3">Materiales</h4>
+                      <ul className="space-y-1">
+                        {guiaGenerada.preparacion.materiales.map((mat, i) => (
+                          <li key={i} className="text-sm flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                            {mat}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
 
-                  {/* Secuencia Didáctica */}
+                  {/* Momentos de la Sesión */}
                   <div>
-                    <h4 className="font-semibold mb-4">Secuencia Didáctica</h4>
+                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      Momentos de la Sesión
+                    </h4>
                     <div className="space-y-4">
-                      {guiaGenerada.secuencia_didactica.map((fase, i) => {
+                      {guiaGenerada.momentos_sesion.map((fase, i) => {
                         const faseColors = {
                           INICIO: 'border-l-amber-500 bg-amber-50/50',
                           DESARROLLO: 'border-l-blue-500 bg-blue-50/50',
@@ -1938,92 +2193,31 @@ export default function GenerarClase() {
                             className={`p-4 rounded-lg border-l-4 ${faseColors[fase.fase] || 'border-l-gray-500 bg-gray-50/50'}`}
                           >
                             <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-bold ${faseTextColors[fase.fase] || 'text-gray-700'}`}>
-                                  {fase.fase}
-                                </span>
-                                <span className="text-sm text-muted-foreground">- {fase.subtitulo}</span>
-                              </div>
+                              <span className={`font-bold ${faseTextColors[fase.fase] || 'text-gray-700'}`}>
+                                {fase.fase}
+                              </span>
                               <Badge variant="secondary" className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {fase.tiempo}
+                                {fase.duracion}
                               </Badge>
                             </div>
-                            <p className="text-sm mb-3">{fase.actividad_detallada}</p>
-                            <div className="flex flex-wrap gap-2">
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                <Lightbulb className="w-3 h-3" />
-                                {fase.habilidad_foco}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                <User className="w-3 h-3" />
-                                {fase.rol_docente}
-                              </Badge>
-                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{fase.actividades}</p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Recursos y Evaluación */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold mb-3">Materiales Necesarios</h4>
-                      <ul className="space-y-1">
-                        {guiaGenerada.recursos_y_evaluacion.materiales_necesarios.map((mat, i) => (
-                          <li key={i} className="text-sm flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                            {mat}
-                          </li>
-                        ))}
-                      </ul>
+                  {/* Adaptaciones Sugeridas */}
+                  {guiaGenerada.adaptaciones_sugeridas && (
+                    <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4 text-purple-600" />
+                        Adaptaciones Sugeridas
+                      </h4>
+                      <p className="text-sm">{guiaGenerada.adaptaciones_sugeridas.estrategias_diferenciadas}</p>
                     </div>
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold mb-3">Evaluación</h4>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">Criterios:</span>
-                          <ul className="mt-1 space-y-1">
-                            {guiaGenerada.recursos_y_evaluacion.criterios_evaluacion.map((crit, i) => (
-                              <li key={i} className="text-sm flex items-center gap-2">
-                                <CheckCircle2 className="w-3 h-3 text-success" />
-                                {crit}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">Instrumento:</span>
-                          <Badge variant="secondary" className="ml-2">{guiaGenerada.recursos_y_evaluacion.instrumento_sugerido}</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tips para el Profesor */}
-                  <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-purple-600" />
-                      Tips para el Profesor
-                    </h4>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-xs font-medium text-purple-600 flex items-center gap-1 mb-1">
-                          <Target className="w-3 h-3" />
-                          Diferenciación
-                        </span>
-                        <p className="text-sm">{guiaGenerada.tips_profesor.diferenciacion}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-pink-600 flex items-center gap-1 mb-1">
-                          <Rocket className="w-3 h-3" />
-                          Reto Extra
-                        </span>
-                        <p className="text-sm">{guiaGenerada.tips_profesor.reto_extra}</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

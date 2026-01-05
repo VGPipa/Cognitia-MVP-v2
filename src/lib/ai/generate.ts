@@ -11,41 +11,35 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// New schema aligned with "Arquitecto Pedagógico" prompt
+// New schema aligned with CNEB MINEDU format
 export interface GuiaClaseData {
-  metadata: {
-    titulo: string;
-    resumen: string;
-    duracion: number;
-    grado_sugerido: string;
+  datos_generales: {
+    titulo_sesion: string;
+    nivel: string;
+    grado: string;
+    area_academica: string;
   };
-  curriculo_peru: {
-    area: string;
+  propositos_aprendizaje: Array<{
     competencia: string;
-    capacidad: string;
-    desempeno_precisado: string;
-    enfoque_transversal: string;
-  };
-  objetivos_aprendizaje: {
-    cognitivo: string;
-    humano: string;
-  };
-  secuencia_didactica: Array<{
-    fase: 'INICIO' | 'DESARROLLO' | 'CIERRE';
-    subtitulo: string;
-    tiempo: string;
-    actividad_detallada: string;
-    habilidad_foco: string;
-    rol_docente: string;
+    criterios_evaluacion: string;
+    evidencia_aprendizaje: string;
+    instrumento_valoracion: string;
   }>;
-  recursos_y_evaluacion: {
-    materiales_necesarios: string[];
-    criterios_evaluacion: string[];
-    instrumento_sugerido: string;
+  enfoques_transversales: Array<{
+    nombre: string;
+    descripcion: string;
+  }>;
+  preparacion: {
+    antes_sesion: string;
+    materiales: string[];
   };
-  tips_profesor: {
-    diferenciacion: string;
-    reto_extra: string;
+  momentos_sesion: Array<{
+    fase: 'INICIO' | 'DESARROLLO' | 'CIERRE';
+    duracion: string;
+    actividades: string;
+  }>;
+  adaptaciones_sugeridas?: {
+    estrategias_diferenciadas: string;
   };
 }
 
@@ -54,10 +48,19 @@ export interface GenerateGuiaClaseInput {
   contexto: string;
   recursos?: string[];
   grado?: string;
+  nivel?: string;
   seccion?: string;
   numeroEstudiantes?: number;
   duracion?: number;
   area?: string;
+  // CNEB fields
+  competencias?: string[];
+  capacidades?: string[];
+  desempeno?: string;
+  enfoqueTransversal?: string;
+  adaptaciones?: string[];
+  adaptacionesPersonalizadas?: string;
+  materiales?: string[];
 }
 
 export interface QuizQuestion {
@@ -221,10 +224,18 @@ export async function generateGuiaClase(
   recursos: string[],
   opciones?: {
     grado?: string;
+    nivel?: string;
     seccion?: string;
     numeroEstudiantes?: number;
     duracion?: number;
     area?: string;
+    competencias?: string[];
+    capacidades?: string[];
+    desempeno?: string;
+    enfoqueTransversal?: string;
+    adaptaciones?: string[];
+    adaptacionesPersonalizadas?: string;
+    materiales?: string[];
   }
 ): Promise<GuiaClaseData> {
   try {
@@ -234,10 +245,18 @@ export async function generateGuiaClase(
         contexto,
         recursos: recursos || [],
         grado: opciones?.grado,
+        nivel: opciones?.nivel,
         seccion: opciones?.seccion,
         numeroEstudiantes: opciones?.numeroEstudiantes,
         duracion: opciones?.duracion,
-        area: opciones?.area
+        area: opciones?.area,
+        competencias: opciones?.competencias,
+        capacidades: opciones?.capacidades,
+        desempeno: opciones?.desempeno,
+        enfoqueTransversal: opciones?.enfoqueTransversal,
+        adaptaciones: opciones?.adaptaciones,
+        adaptacionesPersonalizadas: opciones?.adaptacionesPersonalizadas,
+        materiales: opciones?.materiales
       }
     });
 

@@ -159,6 +159,35 @@ export type Database = {
           },
         ]
       }
+      areas_curriculares: {
+        Row: {
+          created_at: string
+          id: string
+          id_institucion: string | null
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_institucion?: string | null
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_institucion?: string | null
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_curriculares_id_institucion_fkey"
+            columns: ["id_institucion"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asignaciones_profesor: {
         Row: {
           anio_escolar: string
@@ -208,62 +237,135 @@ export type Database = {
           },
         ]
       }
+      capacidades_cneb: {
+        Row: {
+          created_at: string
+          id: string
+          id_competencia: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_competencia: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_competencia?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capacidades_cneb_id_competencia_fkey"
+            columns: ["id_competencia"]
+            isOneToOne: false
+            referencedRelation: "competencias_cneb"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clases: {
         Row: {
+          adaptaciones_ids: string[] | null
+          adaptaciones_personalizadas: string | null
+          capacidades_ids: string[] | null
+          competencias_ids: string[] | null
           contexto: string | null
           created_at: string
+          desempeno: string | null
           duracion_minutos: number | null
           estado: Database["public"]["Enums"]["estado_clase"] | null
           fecha_ejecutada: string | null
           fecha_programada: string | null
           id: string
+          id_area_curricular: string | null
+          id_enfoque_transversal: string | null
           id_grupo: string
           id_guia_tema: string | null
           id_guia_version_actual: string | null
           id_profesor: string
           id_tema: string
+          materiales: Json | null
           metodologia: string | null
+          nivel: string | null
           numero_sesion: number | null
           observaciones: string | null
           updated_at: string
         }
         Insert: {
+          adaptaciones_ids?: string[] | null
+          adaptaciones_personalizadas?: string | null
+          capacidades_ids?: string[] | null
+          competencias_ids?: string[] | null
           contexto?: string | null
           created_at?: string
+          desempeno?: string | null
           duracion_minutos?: number | null
           estado?: Database["public"]["Enums"]["estado_clase"] | null
           fecha_ejecutada?: string | null
           fecha_programada?: string | null
           id?: string
+          id_area_curricular?: string | null
+          id_enfoque_transversal?: string | null
           id_grupo: string
           id_guia_tema?: string | null
           id_guia_version_actual?: string | null
           id_profesor: string
           id_tema: string
+          materiales?: Json | null
           metodologia?: string | null
+          nivel?: string | null
           numero_sesion?: number | null
           observaciones?: string | null
           updated_at?: string
         }
         Update: {
+          adaptaciones_ids?: string[] | null
+          adaptaciones_personalizadas?: string | null
+          capacidades_ids?: string[] | null
+          competencias_ids?: string[] | null
           contexto?: string | null
           created_at?: string
+          desempeno?: string | null
           duracion_minutos?: number | null
           estado?: Database["public"]["Enums"]["estado_clase"] | null
           fecha_ejecutada?: string | null
           fecha_programada?: string | null
           id?: string
+          id_area_curricular?: string | null
+          id_enfoque_transversal?: string | null
           id_grupo?: string
           id_guia_tema?: string | null
           id_guia_version_actual?: string | null
           id_profesor?: string
           id_tema?: string
+          materiales?: Json | null
           metodologia?: string | null
+          nivel?: string | null
           numero_sesion?: number | null
           observaciones?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clases_id_area_curricular_fkey"
+            columns: ["id_area_curricular"]
+            isOneToOne: false
+            referencedRelation: "areas_curriculares"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clases_id_enfoque_transversal_fkey"
+            columns: ["id_enfoque_transversal"]
+            isOneToOne: false
+            referencedRelation: "enfoques_transversales"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clases_id_grupo_fkey"
             columns: ["id_grupo"]
@@ -297,6 +399,41 @@ export type Database = {
             columns: ["id_tema"]
             isOneToOne: false
             referencedRelation: "temas_plan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competencias_cneb: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          id: string
+          id_area: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          id?: string
+          id_area: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          id?: string
+          id_area?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencias_cneb_id_area_fkey"
+            columns: ["id_area"]
+            isOneToOne: false
+            referencedRelation: "areas_curriculares"
             referencedColumns: ["id"]
           },
         ]
@@ -379,6 +516,38 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "planes_anuales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enfoques_transversales: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          id: string
+          id_institucion: string | null
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          id_institucion?: string | null
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          id_institucion?: string | null
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enfoques_transversales_id_institucion_fkey"
+            columns: ["id_institucion"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1020,6 +1189,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tipos_adaptacion: {
+        Row: {
+          activo: boolean | null
+          created_at: string
+          descripcion: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
