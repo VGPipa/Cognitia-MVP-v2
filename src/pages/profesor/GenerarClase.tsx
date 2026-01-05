@@ -690,16 +690,33 @@ export default function GenerarClase() {
     }
   };
 
+  // Validación de campos obligatorios
+  const getMissingFields = () => {
+    const missing: string[] = [];
+    
+    // Tema
+    if (isExtraordinaria) {
+      if (!formData.temaPersonalizado.trim()) missing.push('Tema');
+    } else {
+      if (!temaData?.id) missing.push('Tema');
+    }
+    
+    if (!grupoData) missing.push('Grupo');
+    if (!formData.fecha) missing.push('Fecha programada');
+    if (!formData.areaAcademica) missing.push('Área Académica');
+    if (formData.competencias.length === 0) missing.push('Al menos una Competencia');
+    if (formData.capacidades.length === 0) missing.push('Al menos una Capacidad');
+    if (!formData.desempeno.trim()) missing.push('Desempeño esperado');
+    if (!formData.enfoqueTransversal) missing.push('Enfoque Transversal');
+    if (formData.materiales.length === 0) missing.push('Al menos un Material');
+    
+    return missing;
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        // En extraordinaria: solo requiere temaPersonalizado + grupo + fecha
-        // En normal: requiere temaData + grupo + fecha
-        if (isExtraordinaria) {
-          return !!formData.temaPersonalizado.trim() && !!grupoData && !!formData.fecha;
-        } else {
-          return !!temaData?.id && !!grupoData && !!formData.fecha;
-        }
+        return getMissingFields().length === 0;
       case 2:
         return guiaGenerada !== null;
       default:
@@ -1033,7 +1050,7 @@ export default function GenerarClase() {
                     {/* Tema */}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1">
-                        Tema {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
+                        Tema * {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
                       </Label>
                       {isExtraordinaria ? (
                         <Input 
@@ -1049,7 +1066,7 @@ export default function GenerarClase() {
 
                     {/* Duración */}
                     <div className="space-y-2">
-                      <Label>Duración de la sesión</Label>
+                      <Label>Duración de la sesión *</Label>
                       <Select 
                         value={String(formData.duracion)} 
                         onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
@@ -1117,7 +1134,7 @@ export default function GenerarClase() {
 
                   {/* Área Académica */}
                   <div className="space-y-2">
-                    <Label>Área Académica</Label>
+                    <Label>Área Académica *</Label>
                     <Select 
                       value={formData.areaAcademica} 
                       onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidades: []})}
@@ -1145,7 +1162,7 @@ export default function GenerarClase() {
                   <div className="grid gap-4">
                     {/* Competencias */}
                     <div className="space-y-2">
-                      <Label>Competencias (selección múltiple)</Label>
+                      <Label>Competencias * (selección múltiple)</Label>
                       <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
                         {formData.areaAcademica ? (
                           competenciasCNEB.map(comp => (
@@ -1173,7 +1190,7 @@ export default function GenerarClase() {
 
                     {/* Capacidades */}
                     <div className="space-y-2">
-                      <Label>Capacidades (selección múltiple)</Label>
+                      <Label>Capacidades * (selección múltiple)</Label>
                       <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
                         {formData.competencias.length > 0 ? (
                           capacidadesCNEB.map(cap => (
@@ -1202,7 +1219,7 @@ export default function GenerarClase() {
                     {/* Desempeño con botón IA */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Desempeño esperado</Label>
+                        <Label>Desempeño esperado *</Label>
                         <Button
                           type="button"
                           variant="outline"
@@ -1245,7 +1262,7 @@ export default function GenerarClase() {
 
                     {/* Enfoque Transversal */}
                     <div className="space-y-2">
-                      <Label>Enfoque Transversal</Label>
+                      <Label>Enfoque Transversal *</Label>
                       <Select 
                         value={formData.enfoqueTransversal} 
                         onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
@@ -1268,7 +1285,7 @@ export default function GenerarClase() {
                 <fieldset className="p-4 border rounded-lg space-y-4">
                   <legend className="text-lg font-semibold px-2 flex items-center gap-2">
                     <Settings className="w-5 h-5 text-primary" />
-                    Materiales Disponibles
+                    Materiales Disponibles *
                   </legend>
                   
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1625,6 +1642,18 @@ export default function GenerarClase() {
             )}
           </CardContent>
         </Card>
+
+        {/* Validation message */}
+        {currentStep === 1 && !canProceed() && !isClaseCompletada && (
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+            <p className="font-medium">Completa los campos obligatorios (*) para continuar:</p>
+            <ul className="list-disc list-inside mt-1 text-xs">
+              {getMissingFields().map((field, i) => (
+                <li key={i}>{field}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex justify-between">
