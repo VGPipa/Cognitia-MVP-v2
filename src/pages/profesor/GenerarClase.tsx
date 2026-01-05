@@ -15,7 +15,6 @@ import { useProfesor } from '@/hooks/useProfesor';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
 import { useClases, type Clase } from '@/hooks/useClases';
 import { useGuiasClase } from '@/hooks/useGuias';
-import { useQuizzes } from '@/hooks/useQuizzes';
 import { useTemasProfesor } from '@/hooks/useTemasProfesor';
 import { useAreasCurriculares } from '@/hooks/useAreasCurriculares';
 import { useCompetenciasCNEB } from '@/hooks/useCompetenciasCNEB';
@@ -23,7 +22,7 @@ import { useCapacidadesCNEB } from '@/hooks/useCapacidadesCNEB';
 import { useEnfoquesTransversales } from '@/hooks/useEnfoquesTransversales';
 import { useTiposAdaptacion } from '@/hooks/useTiposAdaptacion';
 import { supabase } from '@/integrations/supabase/client';
-import { generateGuiaClase, generateQuizPre, generateQuizPost, type GuiaClaseData, type QuizPreData, type QuizPostData } from '@/lib/ai/generate';
+import { generateGuiaClase, type GuiaClaseData } from '@/lib/ai/generate';
 import {
   Sparkles,
   ChevronLeft,
@@ -31,33 +30,26 @@ import {
   CheckCircle2,
   BookOpen,
   Target,
-  ClipboardList,
   FileCheck,
   Loader2,
   Info,
   Lock,
   Calendar,
   Users,
-  Plus,
-  X,
-  Brain,
   Heart,
   GraduationCap,
   Clock,
   Lightbulb,
-  User,
-  Rocket,
-  ImageIcon,
   Eye,
-  Settings
+  Settings,
+  Wand2
 } from 'lucide-react';
 
+// Wizard simplificado a 3 pasos
 const STEPS = [
   { id: 1, title: 'Contexto', icon: BookOpen },
   { id: 2, title: 'Guía de Clase', icon: Sparkles },
-  { id: 3, title: 'Quiz PRE', icon: ClipboardList },
-  { id: 4, title: 'Quiz POST', icon: ClipboardList },
-  { id: 5, title: 'Validar', icon: FileCheck }
+  { id: 3, title: 'Validar', icon: FileCheck }
 ];
 
 const MATERIALES_DISPONIBLES = [
@@ -68,20 +60,25 @@ const MATERIALES_DISPONIBLES = [
   { id: 'celular', nombre: 'Computador / Celular' }
 ];
 
-const NIVELES = [
-  { id: 'primaria', nombre: 'Primaria' },
-  { id: 'secundaria', nombre: 'Secundaria' }
-];
-
-const GRADOS_PRIMARIA = ['1°', '2°', '3°', '4°', '5°', '6°'];
-const GRADOS_SECUNDARIA = ['1°', '2°', '3°', '4°', '5°'];
-
 const DURACIONES = [
   { value: 45, label: '45 minutos' },
   { value: 55, label: '55 minutos' },
   { value: 60, label: '60 minutos' },
   { value: 90, label: '90 minutos' }
 ];
+
+// Helper para parsear grado del grupo
+const parseGradoFromGrupo = (grupo: { grado: string; seccion?: string | null }) => {
+  const match = grupo.grado.match(/^(\d+)°?\s*(Primaria|Secundaria)/i);
+  if (match) {
+    return {
+      gradoNum: match[1],
+      nivel: match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase(),
+      gradoCompleto: `${match[1]}° ${match[2]}`
+    };
+  }
+  return { gradoNum: '', nivel: '', gradoCompleto: grupo.grado };
+};
 
 export default function GenerarClase() {
   const navigate = useNavigate();
@@ -93,7 +90,7 @@ export default function GenerarClase() {
   const { cursosConTemas } = useTemasProfesor('2025');
   
   const temaId = searchParams.get('tema');
-  const cursoId = searchParams.get('curso') || searchParams.get('materia'); // Support both for backwards compatibility
+  const cursoId = searchParams.get('curso') || searchParams.get('materia');
   const claseId = searchParams.get('clase');
   
   // View mode state
@@ -108,14 +105,7 @@ export default function GenerarClase() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [generarEnParalelo, setGenerarEnParalelo] = useState(false);
-  
-  // Parallel generation progress
-  const [generacionProgreso, setGeneracionProgreso] = useState({
-    guia: { estado: 'pendiente' as 'pendiente' | 'generando' | 'completado' | 'error', error: null as string | null },
-    quizPre: { estado: 'pendiente' as 'pendiente' | 'generando' | 'completado' | 'error', error: null as string | null },
-    quizPost: { estado: 'pendiente' as 'pendiente' | 'generando' | 'completado' | 'error', error: null as string | null }
-  });
+  const [isGeneratingDesempeno, setIsGeneratingDesempeno] = useState(false);
   
   // Data from DB
   const [temaData, setTemaData] = useState<any>(null);
@@ -126,12 +116,10 @@ export default function GenerarClase() {
   // Check if class is completed (read-only mode)
   const isClaseCompletada = claseData?.estado === 'completada';
   
-  // Form state - Updated for CNEB
+  // Form state
   const [formData, setFormData] = useState({
     fecha: '',
     duracion: 55,
-    nivel: '' as string,
-    grado: '' as string,
     areaAcademica: '' as string,
     // Propósitos de aprendizaje
     competencias: [] as string[],
@@ -158,13 +146,16 @@ export default function GenerarClase() {
 
   // Generated content
   const [guiaGenerada, setGuiaGenerada] = useState<GuiaClaseData | null>(null);
-  const [quizPreData, setQuizPreData] = useState<QuizPreData | null>(null);
-  const [quizPostData, setQuizPostData] = useState<QuizPostData | null>(null);
   
   // Hooks for DB operations
   const { createClase, updateClase } = useClases();
   const { createGuiaVersion } = useGuiasClase(claseData?.id);
-  const { createQuiz } = useQuizzes(claseData?.id);
+
+  // Derived grado info from grupo
+  const gradoInfo = useMemo(() => 
+    grupoData ? parseGradoFromGrupo(grupoData) : null, 
+    [grupoData]
+  );
 
   // Computed data for selection mode
   const clasesEnProceso = useMemo(() => {
@@ -209,7 +200,6 @@ export default function GenerarClase() {
   const temasDisponibles = useMemo(() => {
     const temasMap = new Map<string, { id: string; nombre: string }>();
     
-    // Get temas from cursosConTemas (all temas from assigned courses)
     cursosConTemas.forEach(curso => {
       curso.temas.forEach(tema => {
         if (!temasMap.has(tema.id)) {
@@ -225,7 +215,6 @@ export default function GenerarClase() {
   const gruposDisponibles = useMemo(() => {
     const gruposMap = new Map<string, { id: string; nombre: string }>();
     
-    // Get grupos from asignaciones (all groups assigned to the profesor)
     grupos.forEach(grupo => {
       if (grupo && !gruposMap.has(grupo.id)) {
         const nombre = grupo.nombre || `${grupo.grado}° ${grupo.seccion || ''}`.trim();
@@ -239,11 +228,9 @@ export default function GenerarClase() {
   // Load initial data based on URL params
   useEffect(() => {
     const loadData = async () => {
-      // If there are URL params, go directly to wizard
       if (temaId && cursoId) {
         setViewMode('wizard');
         try {
-          // Load tema
           const { data: tema, error: temaError } = await supabase
             .from('temas_plan')
             .select('*')
@@ -253,7 +240,6 @@ export default function GenerarClase() {
           if (temaError) throw temaError;
           setTemaData(tema);
 
-          // Load curso
           const { data: curso, error: cursoError } = await supabase
             .from('cursos_plan')
             .select('*')
@@ -263,13 +249,11 @@ export default function GenerarClase() {
           if (cursoError) throw cursoError;
           setCursoData(curso);
 
-          // Find grupo from asignaciones
           const asignacion = asignaciones.find(a => a.id_materia === cursoId);
           if (asignacion?.grupo) {
             setGrupoData(asignacion.grupo);
           }
 
-          // Load existing clase if claseId provided
           if (claseId) {
             const { data: clase, error: claseError } = await supabase
               .from('clases')
@@ -287,11 +271,9 @@ export default function GenerarClase() {
                 ...prev,
                 fecha: clase.fecha_programada || '',
                 duracion: clase.duracion_minutos || 55,
-                metodologias: clase.metodologia ? [clase.metodologia] : [],
                 contexto: clase.contexto || ''
               }));
 
-              // Load existing guide if it exists
               if (clase.id_guia_version_actual) {
                 try {
                   const { data: guia } = await supabase
@@ -303,26 +285,11 @@ export default function GenerarClase() {
                   if (guia && guia.contenido) {
                     const contenidoGuia = guia.contenido as any;
                     setGuiaGenerada(contenidoGuia);
-                    // Advance to step 2 to show the guide
                     setCurrentStep(2);
                   }
                 } catch (error) {
                   console.error('Error loading guide:', error);
                 }
-              }
-
-              // Load existing quizzes if they exist
-              await loadQuizzesFromDB(clase.id);
-
-              // Advance to appropriate step based on what exists
-              // If class is completed, don't go to step 5 (validation)
-              const claseCompletada = clase.estado === 'completada';
-              if (guiaGenerada && quizPreData && quizPostData) {
-                setCurrentStep(claseCompletada ? 4 : 5);
-              } else if (guiaGenerada && quizPreData) {
-                setCurrentStep(4);
-              } else if (guiaGenerada) {
-                setCurrentStep(3);
               }
             }
           }
@@ -338,7 +305,6 @@ export default function GenerarClase() {
           setViewMode('selection');
         }
       } else if (claseId) {
-        // Only claseId provided, load clase and derive tema/materia
         setViewMode('wizard');
         try {
           const { data: clase, error: claseError } = await supabase
@@ -358,7 +324,6 @@ export default function GenerarClase() {
           if (clase.tema) {
             setTemaData(clase.tema);
             
-            // Load curso from tema
             const { data: curso } = await supabase
               .from('cursos_plan')
               .select('*')
@@ -376,11 +341,9 @@ export default function GenerarClase() {
             ...prev,
             fecha: clase.fecha_programada || '',
             duracion: clase.duracion_minutos || 55,
-            metodologias: clase.metodologia ? [clase.metodologia] : [],
             contexto: clase.contexto || ''
           }));
 
-          // Load existing guide if it exists
           if (clase.id_guia_version_actual) {
             try {
               const { data: guia } = await supabase
@@ -392,16 +355,12 @@ export default function GenerarClase() {
               if (guia && guia.contenido) {
                 const contenidoGuia = guia.contenido as any;
                 setGuiaGenerada(contenidoGuia);
-                // Advance to step 2 to show the guide
                 setCurrentStep(2);
               }
             } catch (error) {
               console.error('Error loading guide:', error);
             }
           }
-
-          // Load existing quizzes if they exist
-          await loadQuizzesFromDB(clase.id);
           
           setIsLoadingData(false);
         } catch (error: any) {
@@ -414,7 +373,6 @@ export default function GenerarClase() {
           setIsLoadingData(false);
         }
       } else {
-        // No params - selection mode
         setViewMode('selection');
         setIsLoadingData(false);
       }
@@ -428,102 +386,13 @@ export default function GenerarClase() {
   // Effect to advance to appropriate step when data is loaded
   useEffect(() => {
     if (!isLoadingData && viewMode === 'wizard' && claseData) {
-      // Only advance if we're still on step 1 (don't override user navigation)
       if (currentStep === 1) {
-        // If class is completed, max step is 4 (don't show validation step)
-        if (isClaseCompletada) {
-          if (guiaGenerada && quizPreData && quizPostData) {
-            setCurrentStep(4);
-          } else if (guiaGenerada && quizPreData) {
-            setCurrentStep(4);
-          } else if (guiaGenerada) {
-            setCurrentStep(2);
-          }
-        } else {
-          // Normal flow for non-completed classes
-          if (guiaGenerada && quizPreData && quizPostData) {
-            setCurrentStep(5);
-          } else if (guiaGenerada && quizPreData) {
-            setCurrentStep(4);
-          } else if (guiaGenerada) {
-            setCurrentStep(2);
-          }
+        if (guiaGenerada) {
+          setCurrentStep(2);
         }
       }
     }
-  }, [isLoadingData, viewMode, guiaGenerada, quizPreData, quizPostData, currentStep, claseData, isClaseCompletada]);
-
-  // Helper function to load quizzes from database
-  const loadQuizzesFromDB = async (claseId: string) => {
-    try {
-      const { data: quizzes } = await supabase
-        .from('quizzes')
-        .select(`
-          *,
-          preguntas:preguntas(*)
-        `)
-        .eq('id_clase', claseId)
-        .order('tipo', { ascending: true });
-
-      if (quizzes) {
-        const quizPre = quizzes.find(q => q.tipo === 'previo');
-        const quizPost = quizzes.find(q => q.tipo === 'post');
-
-        if (quizPre && quizPre.preguntas && Array.isArray(quizPre.preguntas) && quizPre.preguntas.length > 0) {
-          // Reconstruct QuizPreData from database
-          // Extract estimulo info from titulo and instrucciones
-          const tituloMatch = quizPre.titulo?.match(/Micro-Learning:\s*(.+)/);
-          const tiempoMatch = quizPre.instrucciones?.match(/Tiempo estimado de lectura:\s*(.+)/);
-          
-          const quizPreData: QuizPreData = {
-            estimulo_aprendizaje: {
-              titulo: tituloMatch ? tituloMatch[1] : quizPre.titulo || 'Estímulo de Aprendizaje',
-              texto_contenido: 'Contenido de aprendizaje previo a la clase', // This is not stored in DB anymore
-              descripcion_visual: 'Ilustración educativa relacionada con el tema', // This is not stored in DB anymore
-              tiempo_lectura_estimado: tiempoMatch ? tiempoMatch[1] : '2 minutos'
-            },
-            quiz_comprension: (quizPre.preguntas as any[]).map((p: any) => ({
-              pregunta: p.texto_pregunta,
-              concepto: p.concepto || '',
-              opciones: p.opciones || [],
-              feedback_acierto: p.feedback_acierto || '¡Correcto!',
-              feedback_error: p.justificacion || 'Revisa nuevamente.'
-            }))
-          };
-          setQuizPreData(quizPreData);
-        }
-
-        if (quizPost && quizPost.preguntas && Array.isArray(quizPost.preguntas) && quizPost.preguntas.length > 0) {
-          const quizPostData: QuizPostData = {
-            metadata: {
-              titulo_evaluacion: quizPost.titulo || 'Evaluación de Competencias',
-              proposito: quizPost.instrucciones?.split('\n\n')[0] || 'Evaluar el aprendizaje',
-              nivel_taxonomico: quizPost.instrucciones?.match(/Nivel taxonómico:\s*(.+)/)?.[1] || 'Aplicación',
-              tiempo_sugerido: `${quizPost.tiempo_limite || 15} minutos`
-            },
-            preguntas: (quizPost.preguntas as any[]).map((p: any) => {
-              // Parse contexto_situacional and pregunta from texto_pregunta
-              const partes = p.texto_pregunta?.split('\n\n') || [];
-              const contexto = partes.length > 1 ? partes[0] : '';
-              const pregunta = partes.length > 1 ? partes[1] : p.texto_pregunta || '';
-              
-              return {
-                numero: p.orden || 0,
-                contexto_situacional: contexto,
-                pregunta: pregunta,
-                concepto: p.concepto || '',
-                opciones: p.opciones || [],
-                retroalimentacion_detallada: p.justificacion || ''
-              };
-            })
-          };
-          setQuizPostData(quizPostData);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading quizzes:', error);
-    }
-  };
+  }, [isLoadingData, viewMode, guiaGenerada, currentStep, claseData]);
 
   // Handler: Select a session to continue
   const handleSeleccionarSesion = async (clase: Clase) => {
@@ -532,7 +401,6 @@ export default function GenerarClase() {
     if (clase.tema) {
       setTemaData(clase.tema);
       
-      // Load full curso data
       const { data: curso } = await supabase
         .from('cursos_plan')
         .select('*')
@@ -550,11 +418,9 @@ export default function GenerarClase() {
       ...prev,
       fecha: clase.fecha_programada || '',
       duracion: clase.duracion_minutos || 55,
-      metodologias: clase.metodologia ? [clase.metodologia] : [],
       contexto: clase.contexto || ''
     }));
     
-    // Load existing guide if it exists
     if (clase.id_guia_version_actual) {
       try {
         const { data: guia } = await supabase
@@ -562,20 +428,14 @@ export default function GenerarClase() {
           .select('*')
           .eq('id', clase.id_guia_version_actual)
           .single();
-        console.log('Guía:', guia);
         if (guia && guia.contenido) {
           const contenidoGuia = guia.contenido as any;
           setGuiaGenerada(contenidoGuia);
-          // Advance to step 2 to show the guide
-          // setCurrentStep(2);
         }
       } catch (error) {
         console.error('Error loading guide:', error);
       }
     }
-    
-    // Load existing quizzes if they exist
-    await loadQuizzesFromDB(clase.id);
     
     setIsExtraordinaria(false);
     setViewMode('wizard');
@@ -591,8 +451,6 @@ export default function GenerarClase() {
     setFormData({
       fecha: new Date().toISOString().split('T')[0],
       duracion: 55,
-      nivel: '',
-      grado: '',
       areaAcademica: '',
       competencias: [],
       capacidades: [],
@@ -606,24 +464,9 @@ export default function GenerarClase() {
       temaPersonalizado: ''
     });
     setGuiaGenerada(null);
-    setQuizPreData(null);
-    setQuizPostData(null);
-    setGenerarEnParalelo(false);
-    setGeneracionProgreso({
-      guia: { estado: 'pendiente', error: null },
-      quizPre: { estado: 'pendiente', error: null },
-      quizPost: { estado: 'pendiente', error: null }
-    });
     setCurrentStep(1);
     setViewMode('wizard');
   };
-
-  // Get temas for selected materia (for extraordinaria mode)
-  const temasParaCurso = useMemo(() => {
-    if (!isExtraordinaria || !cursoData?.id) return [];
-    const curso = cursosConTemas.find(c => c.id === cursoData.id);
-    return curso?.temas || [];
-  }, [isExtraordinaria, cursoData?.id, cursosConTemas]);
 
   // Handler: Discard a class in process
   const handleDescartar = async (claseId: string) => {
@@ -641,13 +484,11 @@ export default function GenerarClase() {
 
   // Handler: Back to selection
   const handleVolverSeleccion = () => {
-    // If there are URL params, user came from dashboard - navigate back
     if (claseId || temaId || cursoId) {
       navigate('/profesor/dashboard');
       return;
     }
     
-    // Otherwise, switch to selection mode
     setViewMode('selection');
     setIsExtraordinaria(false);
     setTemaData(null);
@@ -655,14 +496,6 @@ export default function GenerarClase() {
     setGrupoData(null);
     setClaseData(null);
     setGuiaGenerada(null);
-    setQuizPreData(null);
-    setQuizPostData(null);
-    setGenerarEnParalelo(false);
-    setGeneracionProgreso({
-      guia: { estado: 'pendiente', error: null },
-      quizPre: { estado: 'pendiente', error: null },
-      quizPost: { estado: 'pendiente', error: null }
-    });
     setCurrentStep(1);
   };
 
@@ -674,11 +507,8 @@ export default function GenerarClase() {
       throw new Error('Faltan datos necesarios para crear la clase (grupo o profesor)');
     }
 
-    // Get tema ID - must be available in both normal and extraordinaria mode
-    const temaIdToUse = temaData?.id || temaId;
-    if (!temaIdToUse) {
-      throw new Error('Debes seleccionar un tema antes de continuar');
-    }
+    // Para clases extraordinarias, id_tema puede ser null
+    const temaIdToUse = temaData?.id || null;
 
     const nuevaClase = await createClase.mutateAsync({
       id_tema: temaIdToUse,
@@ -692,23 +522,71 @@ export default function GenerarClase() {
     return nuevaClase;
   };
 
-  const handleGenerarGuia = async () => {
-    // Use custom name if provided, otherwise use tema name from DB
-    const temaNombre = formData.temaPersonalizado || temaData?.nombre;
-    
-    if (!temaNombre || !formData.contexto) {
+  // Handler: Generate desempeño with AI
+  const handleGenerarDesempeno = async () => {
+    if (formData.competencias.length === 0 || formData.capacidades.length === 0) {
       toast({
-        title: 'Error',
-        description: 'Completa el tema y contexto antes de generar la guía',
+        title: 'Selección requerida',
+        description: 'Selecciona al menos una competencia y una capacidad',
         variant: 'destructive'
       });
       return;
     }
 
-    if (!temaData?.id) {
+    setIsGeneratingDesempeno(true);
+    
+    try {
+      const temaNombre = formData.temaPersonalizado || temaData?.nombre || '';
+      const areaName = areas.find(a => a.id === formData.areaAcademica)?.nombre || '';
+      const competenciasNames = formData.competencias
+        .map(id => competenciasCNEB.find(c => c.id === id)?.nombre)
+        .filter(Boolean);
+      const capacidadesNames = formData.capacidades
+        .map(id => capacidadesCNEB.find(c => c.id === id)?.nombre)
+        .filter(Boolean);
+
+      const response = await supabase.functions.invoke('generate-desempenos', {
+        body: {
+          tema: temaNombre,
+          nivel: gradoInfo?.nivel || 'Secundaria',
+          grado: gradoInfo?.gradoNum || '3',
+          area: areaName,
+          competencias: competenciasNames,
+          capacidades: capacidadesNames
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      setFormData(prev => ({
+        ...prev,
+        desempeno: data.desempenoUnificado || data.desempenos?.join(' ')
+      }));
+
+      toast({
+        title: 'Desempeño generado',
+        description: 'Puedes editar el texto si lo deseas'
+      });
+    } catch (error: any) {
+      console.error('Error generating desempeno:', error);
       toast({
         title: 'Error',
-        description: 'Debes seleccionar un tema antes de continuar',
+        description: 'No se pudo generar el desempeño. Intenta de nuevo.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGeneratingDesempeno(false);
+    }
+  };
+
+  const handleGenerarGuia = async () => {
+    const temaNombre = formData.temaPersonalizado || temaData?.nombre;
+    
+    if (!temaNombre) {
+      toast({
+        title: 'Error',
+        description: 'Ingresa el nombre del tema antes de continuar',
         variant: 'destructive'
       });
       return;
@@ -717,7 +595,7 @@ export default function GenerarClase() {
     if (!grupoData) {
       toast({
         title: 'Error',
-        description: 'Selecciona un salón antes de continuar',
+        description: 'Selecciona un grupo antes de continuar',
         variant: 'destructive'
       });
       return;
@@ -725,28 +603,25 @@ export default function GenerarClase() {
 
     setIsGenerating(true);
     try {
-      // Ensure clase exists
       const clase = await ensureClase();
       
-      // Update clase state
       await updateClase.mutateAsync({
         id: clase.id,
         estado: 'generando_clase',
         contexto: formData.contexto,
       });
 
-      // Generate guide with AI, passing additional context data
       const guia = await generateGuiaClase(
         temaNombre,
         formData.contexto,
         formData.materiales,
         {
-          grado: formData.grado || grupoData?.grado,
-          nivel: formData.nivel,
+          grado: gradoInfo?.gradoCompleto || grupoData?.grado,
+          nivel: gradoInfo?.nivel,
           seccion: grupoData?.seccion,
           numeroEstudiantes: grupoData?.cantidad_alumnos,
           duracion: formData.duracion,
-          area: cursoData?.nombre,
+          area: cursoData?.nombre || areas.find(a => a.id === formData.areaAcademica)?.nombre,
           competencias: formData.competencias.map(id => competenciasCNEB.find(c => c.id === id)?.nombre || ''),
           capacidades: formData.capacidades.map(id => capacidadesCNEB.find(c => c.id === id)?.nombre || ''),
           desempeno: formData.desempeno,
@@ -759,27 +634,23 @@ export default function GenerarClase() {
 
       setGuiaGenerada(guia);
 
-      // Save to DB with new schema content
       const guiaVersion = await createGuiaVersion.mutateAsync({
         id_clase: clase.id,
         objetivos: guia.propositos_aprendizaje.map(p => p.competencia).join('\n'),
         estructura: guia.momentos_sesion,
-        contenido: guia, // Save full new schema
-        preguntas_socraticas: [], // No longer generated in new prompt
+        contenido: guia,
+        preguntas_socraticas: [],
         generada_ia: true,
         estado: 'borrador'
       });
 
-      // Update clase to reference guia and change state
       await updateClase.mutateAsync({
         id: clase.id,
         estado: 'editando_guia',
         id_guia_version_actual: guiaVersion.id
       });
 
-    toast({ title: '¡Guía generada!', description: 'La guía de clase ha sido creada con éxito' });
-      
-      // Avanzar automáticamente al paso 2
+      toast({ title: '¡Guía generada!', description: 'La guía de clase ha sido creada con éxito' });
       setCurrentStep(2);
     } catch (error: any) {
       toast({
@@ -792,448 +663,17 @@ export default function GenerarClase() {
     }
   };
 
-  const handleGenerarTodoEnParalelo = async () => {
-    // Use custom name if provided, otherwise use tema name from DB
-    const temaNombre = formData.temaPersonalizado || temaData?.nombre;
-    
-    if (!temaNombre || !formData.contexto) {
-      toast({
-        title: 'Error',
-        description: 'Completa el tema y contexto antes de generar',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!temaData?.id) {
-      toast({
-        title: 'Error',
-        description: 'Debes seleccionar un tema antes de continuar',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!grupoData) {
-      toast({
-        title: 'Error',
-        description: 'Selecciona un salón antes de continuar',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    setGeneracionProgreso({
-      guia: { estado: 'generando', error: null },
-      quizPre: { estado: 'generando', error: null },
-      quizPost: { estado: 'generando', error: null }
-    });
-
-    try {
-      // Ensure clase exists
-      const clase = await ensureClase();
-      
-      // Update clase state
-      await updateClase.mutateAsync({
-        id: clase.id,
-        estado: 'generando_clase',
-        contexto: formData.contexto,
-      });
-
-      // Generate all three in parallel
-      const [guiaResult, quizPreResult, quizPostResult] = await Promise.allSettled([
-        // Generate guía
-        generateGuiaClase(
-          temaNombre,
-          formData.contexto,
-          formData.materiales,
-          {
-            grado: formData.grado || grupoData?.grado,
-            nivel: formData.nivel,
-            seccion: grupoData?.seccion,
-            numeroEstudiantes: grupoData?.cantidad_alumnos,
-            duracion: formData.duracion,
-            area: cursoData?.nombre,
-            competencias: formData.competencias.map(id => competenciasCNEB.find(c => c.id === id)?.nombre || ''),
-            capacidades: formData.capacidades.map(id => capacidadesCNEB.find(c => c.id === id)?.nombre || ''),
-            desempeno: formData.desempeno,
-            enfoqueTransversal: enfoques.find(e => e.id === formData.enfoqueTransversal)?.nombre,
-            adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
-            adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
-            materiales: formData.materiales
-          }
-        ),
-        // Generate quiz PRE (without guia info initially)
-        generateQuizPre({
-          tema: temaNombre,
-          contexto: formData.contexto,
-          grado: grupoData?.grado,
-          area: cursoData?.nombre
-        }),
-        // Generate quiz POST (without guia info initially)
-        generateQuizPost({
-          tema: temaNombre,
-          contexto: formData.contexto,
-          grado: grupoData?.grado,
-          area: cursoData?.nombre
-        })
-      ]);
-
-      // Process guía result
-      if (guiaResult.status === 'fulfilled') {
-        const guia = guiaResult.value;
-        setGuiaGenerada(guia);
-        setGeneracionProgreso(prev => ({ ...prev, guia: { estado: 'completado', error: null } }));
-
-        // Save guía to DB
-        const guiaVersion = await createGuiaVersion.mutateAsync({
-          id_clase: clase.id,
-          objetivos: guia.propositos_aprendizaje.map(p => p.competencia).join('\n'),
-          estructura: guia.momentos_sesion,
-          contenido: guia,
-          preguntas_socraticas: [],
-          generada_ia: true,
-          estado: 'borrador'
-        });
-
-        await updateClase.mutateAsync({
-          id: clase.id,
-          estado: 'editando_guia',
-          id_guia_version_actual: guiaVersion.id
-        });
-      } else {
-        const errorMsg = guiaResult.reason?.message || 'Error desconocido';
-        setGeneracionProgreso(prev => ({ ...prev, guia: { estado: 'error', error: errorMsg } }));
-        toast({
-          title: 'Error al generar guía',
-          description: errorMsg,
-          variant: 'destructive'
-        });
-      }
-
-      // Process quiz PRE result
-      if (quizPreResult.status === 'fulfilled') {
-        const quiz = quizPreResult.value;
-        setQuizPreData(quiz);
-        setGeneracionProgreso(prev => ({ ...prev, quizPre: { estado: 'completado', error: null } }));
-
-        // Save quiz PRE to DB
-        const quizCreated = await createQuiz.mutateAsync({
-          id_clase: clase.id,
-          tipo: 'previo',
-          titulo: `Micro-Learning: ${quiz.estimulo_aprendizaje.titulo}`,
-          instrucciones: `Lee atentamente el siguiente contenido y responde las preguntas de comprensión. Tiempo estimado de lectura: ${quiz.estimulo_aprendizaje.tiempo_lectura_estimado}`,
-          tiempo_limite: 5,
-          estado: 'borrador'
-        });
-
-        const preguntasToInsert = quiz.quiz_comprension.map((p, index) => {
-          const opcionCorrecta = p.opciones.find(o => o.es_correcta)?.texto || '';
-          return {
-            id_quiz: quizCreated.id,
-            texto_pregunta: p.pregunta,
-            concepto: p.concepto,
-            tipo: 'opcion_multiple' as const,
-            opciones: p.opciones,
-            respuesta_correcta: opcionCorrecta,
-            justificacion: p.feedback_error,
-            feedback_acierto: p.feedback_acierto,
-            orden: index + 1
-          };
-        });
-
-        const { error: preguntasError } = await supabase
-          .from('preguntas')
-          .insert(preguntasToInsert);
-
-        if (preguntasError) throw preguntasError;
-      } else {
-        const errorMsg = quizPreResult.reason?.message || 'Error desconocido';
-        setGeneracionProgreso(prev => ({ ...prev, quizPre: { estado: 'error', error: errorMsg } }));
-        toast({
-          title: 'Error al generar Quiz PRE',
-          description: errorMsg,
-          variant: 'destructive'
-        });
-      }
-
-      // Process quiz POST result
-      if (quizPostResult.status === 'fulfilled') {
-        const quiz = quizPostResult.value;
-        setQuizPostData(quiz);
-        setGeneracionProgreso(prev => ({ ...prev, quizPost: { estado: 'completado', error: null } }));
-
-        // Save quiz POST to DB
-        const quizCreated = await createQuiz.mutateAsync({
-          id_clase: clase.id,
-          tipo: 'post',
-          titulo: quiz.metadata.titulo_evaluacion,
-          instrucciones: `${quiz.metadata.proposito}\n\nNivel taxonómico: ${quiz.metadata.nivel_taxonomico}`,
-          tiempo_limite: 15,
-          estado: 'borrador'
-        });
-
-        const preguntasToInsert = quiz.preguntas.map(p => {
-          const opcionCorrecta = p.opciones.find(o => o.es_correcta)?.texto || '';
-          return {
-            id_quiz: quizCreated.id,
-            texto_pregunta: `${p.contexto_situacional}\n\n${p.pregunta}`,
-            concepto: temaData?.nombre || 'Aplicación práctica',
-            tipo: 'opcion_multiple' as const,
-            opciones: p.opciones,
-            respuesta_correcta: opcionCorrecta,
-            justificacion: p.retroalimentacion_detallada,
-            orden: p.numero
-          };
-        });
-
-        const { error: preguntasError } = await supabase
-          .from('preguntas')
-          .insert(preguntasToInsert);
-
-        if (preguntasError) throw preguntasError;
-      } else {
-        const errorMsg = quizPostResult.reason?.message || 'Error desconocido';
-        setGeneracionProgreso(prev => ({ ...prev, quizPost: { estado: 'error', error: errorMsg } }));
-        toast({
-          title: 'Error al generar Quiz POST',
-          description: errorMsg,
-          variant: 'destructive'
-        });
-      }
-
-      // Show success message if at least one succeeded
-      const successCount = [
-        guiaResult.status === 'fulfilled',
-        quizPreResult.status === 'fulfilled',
-        quizPostResult.status === 'fulfilled'
-      ].filter(Boolean).length;
-
-      if (successCount > 0) {
-        toast({
-          title: 'Generación completada',
-          description: `${successCount} de 3 componentes generados exitosamente`
-        });
-        
-        // Advance to step 2 if guía was generated
-        if (guiaResult.status === 'fulfilled') {
-          setCurrentStep(2);
-        }
-      }
-
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error durante la generación: ' + error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGenerarQuizPre = async () => {
-    // Use custom name if provided, otherwise use tema name from DB
-    const temaNombre = formData.temaPersonalizado || temaData?.nombre;
-    
-    if (!temaNombre) {
-      toast({
-        title: 'Error',
-        description: 'No se encontró la información del tema',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!claseData && !guiaGenerada) {
-      toast({
-        title: 'Error',
-        description: 'Primero debes generar la guía de clase',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const clase = claseData || await ensureClase();
-
-      // Extract enriched info from guia for better quiz generation with concept alignment
-      const guiaInfo = guiaGenerada ? {
-        objetivo_cognitivo: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
-        objetivo_humano: guiaGenerada.enfoques_transversales[0]?.descripcion || '',
-        desempeno_cneb: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
-        actividad_inicio: guiaGenerada.momentos_sesion.find(s => s.fase === 'INICIO')?.actividades,
-        actividad_desarrollo: guiaGenerada.momentos_sesion.find(s => s.fase === 'DESARROLLO')?.actividades,
-        criterios_evaluacion: guiaGenerada.propositos_aprendizaje.map(p => p.evidencia_aprendizaje),
-        capacidad_cneb: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
-        habilidad_foco: guiaGenerada.datos_generales.area_academica
-      } : undefined;
-
-      // Generate quiz with AI using new edge function
-      const quiz = await generateQuizPre({
-        tema: temaNombre,
-        contexto: formData.contexto,
-        grado: grupoData?.grado,
-        area: cursoData?.nombre,
-        guia_clase: guiaInfo
-      });
-      
-      setQuizPreData(quiz);
-
-      // Save quiz to DB
-      const quizCreated = await createQuiz.mutateAsync({
-        id_clase: clase.id,
-        tipo: 'previo',
-        titulo: `Micro-Learning: ${quiz.estimulo_aprendizaje.titulo}`,
-        instrucciones: `Lee atentamente el siguiente contenido y responde las preguntas de comprensión. Tiempo estimado de lectura: ${quiz.estimulo_aprendizaje.tiempo_lectura_estimado}`,
-        tiempo_limite: 5,
-        estado: 'borrador'
-      });
-
-      // Save questions with new structure
-      const preguntasToInsert = quiz.quiz_comprension.map((p, index) => {
-        // Find the correct option text
-        const opcionCorrecta = p.opciones.find(o => o.es_correcta)?.texto || '';
-        
-        return {
-          id_quiz: quizCreated.id,
-          texto_pregunta: p.pregunta,
-          concepto: p.concepto,
-          tipo: 'opcion_multiple' as const,
-          opciones: p.opciones,
-          respuesta_correcta: opcionCorrecta,
-          justificacion: p.feedback_error,
-          feedback_acierto: p.feedback_acierto,
-          orden: index + 1
-        };
-      });
-
-      const { error: preguntasError } = await supabase
-        .from('preguntas')
-        .insert(preguntasToInsert);
-
-      if (preguntasError) throw preguntasError;
-
-      toast({ title: 'Quiz PRE generado', description: `Micro-Learning con ${quiz.quiz_comprension.length} preguntas de comprensión` });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error al generar el quiz PRE: ' + error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGenerarQuizPost = async () => {
-    // Use custom name if provided, otherwise use tema name from DB
-    const temaNombre = formData.temaPersonalizado || temaData?.nombre;
-    
-    if (!temaNombre) {
-      toast({
-        title: 'Error',
-        description: 'No se encontró la información del tema',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!claseData && !guiaGenerada) {
-      toast({
-        title: 'Error',
-        description: 'Primero debes generar la guía de clase',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const clase = claseData || await ensureClase();
-
-      // Extract enriched info from guia for better quiz generation
-      const guiaInfo = guiaGenerada ? {
-        objetivo_humano: guiaGenerada.enfoques_transversales[0]?.descripcion || '',
-        objetivo_aprendizaje: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
-        competencia: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
-        capacidad: guiaGenerada.propositos_aprendizaje[0]?.competencia || '',
-        desempeno_cneb: guiaGenerada.propositos_aprendizaje[0]?.criterios_evaluacion || '',
-        enfoque_transversal: guiaGenerada.enfoques_transversales[0]?.nombre || '',
-        actividad_desarrollo: guiaGenerada.momentos_sesion.find(s => s.fase === 'DESARROLLO')?.actividades,
-        actividad_cierre: guiaGenerada.momentos_sesion.find(s => s.fase === 'CIERRE')?.actividades,
-        criterios_evaluacion: guiaGenerada.propositos_aprendizaje.map(p => p.evidencia_aprendizaje)
-      } : undefined;
-
-      // Generate quiz with AI using new edge function
-      const quiz = await generateQuizPost({
-        tema: temaNombre,
-        contexto: formData.contexto,
-        grado: grupoData?.grado,
-        area: cursoData?.nombre,
-        guia_clase: guiaInfo
-      });
-      
-      setQuizPostData(quiz);
-
-      // Save quiz to DB with metadata in instrucciones
-      const quizCreated = await createQuiz.mutateAsync({
-        id_clase: clase.id,
-        tipo: 'post',
-        titulo: quiz.metadata.titulo_evaluacion,
-        instrucciones: `${quiz.metadata.proposito}\n\nNivel taxonómico: ${quiz.metadata.nivel_taxonomico}`,
-        tiempo_limite: 15,
-        estado: 'borrador'
-      });
-
-      // Save questions
-      const preguntasToInsert = quiz.preguntas.map(p => {
-        const opcionCorrecta = p.opciones.find(o => o.es_correcta)?.texto || '';
-        
-        return {
-          id_quiz: quizCreated.id,
-          texto_pregunta: `${p.contexto_situacional}\n\n${p.pregunta}`,
-          concepto: temaData?.nombre || 'Aplicación práctica',
-          tipo: 'opcion_multiple' as const,
-          opciones: p.opciones,
-          respuesta_correcta: opcionCorrecta,
-          justificacion: p.retroalimentacion_detallada,
-          orden: p.numero
-        };
-      });
-
-      const { error: preguntasError } = await supabase
-        .from('preguntas')
-        .insert(preguntasToInsert);
-
-      if (preguntasError) throw preguntasError;
-
-      toast({ title: 'Quiz POST generado', description: `Evaluación de competencias con ${quiz.preguntas.length} preguntas` });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error al generar el quiz POST: ' + error.message,
-        variant: 'destructive'
-      });
-    } finally {
-    setIsGenerating(false);
-    }
-  };
-
   const handleValidar = async () => {
-    if (!guiaGenerada || !quizPreData || !quizPostData || !claseData) {
+    if (!guiaGenerada || !claseData) {
       toast({ 
         title: 'Pasos incompletos', 
-        description: 'Debes completar todos los pasos anteriores',
+        description: 'Debes generar la guía de clase primero',
         variant: 'destructive'
       });
       return;
     }
 
     try {
-      // Transición directa a clase_programada (validación completa)
       await updateClase.mutateAsync({
         id: claseData.id,
         estado: 'clase_programada'
@@ -1253,17 +693,15 @@ export default function GenerarClase() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        // In extraordinaria mode, we need a selected tema (from DB) plus optional custom name
-        // In normal mode, we need temaData from URL params
-        const hasTema = temaData?.id ? true : false;
-        const temaNombre = isExtraordinaria ? (formData.temaPersonalizado || temaData?.nombre) : temaData?.nombre;
-        return hasTema && temaNombre && formData.contexto && formData.fecha && grupoData;
+        // En extraordinaria: solo requiere temaPersonalizado + grupo + fecha
+        // En normal: requiere temaData + grupo + fecha
+        if (isExtraordinaria) {
+          return !!formData.temaPersonalizado.trim() && !!grupoData && !!formData.fecha;
+        } else {
+          return !!temaData?.id && !!grupoData && !!formData.fecha;
+        }
       case 2:
         return guiaGenerada !== null;
-      case 3:
-        return quizPreData !== null;
-      case 4:
-        return quizPostData !== null;
       default:
         return true;
     }
@@ -1427,7 +865,7 @@ export default function GenerarClase() {
                       <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
-                          {sesion.grupo?.nombre || `${sesion.grupo?.grado}° Primaria ${sesion.grupo?.seccion || ''}`}
+                          {sesion.grupo?.nombre || `${sesion.grupo?.grado}° ${sesion.grupo?.seccion || ''}`}
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
@@ -1460,26 +898,23 @@ export default function GenerarClase() {
           </Card>
         )}
 
-        {/* Crear Clase Extraordinaria */}
-        <Card className="border-dashed hover:border-primary/50 cursor-pointer transition-colors" onClick={handleCrearExtraordinaria}>
+        {/* Clase Extraordinaria */}
+        <Card className="border-dashed">
           <CardContent className="p-4">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-              <Sparkles className="w-5 h-5" />
-              <span className="font-medium">Crear Clase Extraordinaria</span>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Crear Clase Extraordinaria</p>
+                <p className="text-sm text-muted-foreground">
+                  Define un tema personalizado fuera del plan curricular
+                </p>
+              </div>
+              <Button variant="outline" onClick={handleCrearExtraordinaria}>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Nueva Clase
+              </Button>
             </div>
           </CardContent>
         </Card>
-
-        {/* Link to Planificación */}
-        <div className="text-center">
-          <Link 
-            to="/profesor/planificacion" 
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <BookOpen className="w-4 h-4" />
-            Ir a Planificación para Crear Guía Maestra
-          </Link>
-        </div>
       </div>
     );
   };
@@ -1488,14 +923,18 @@ export default function GenerarClase() {
   const renderWizardMode = () => {
     if (isLoadingData) {
       return (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Cargando datos...</p>
+            </CardContent>
+          </Card>
         </div>
       );
     }
 
-    // For extraordinaria mode, we need grupoData but not necessarily tema/curso
-    if (!isExtraordinaria && (!temaData || !cursoData || !grupoData)) {
+    if (!isExtraordinaria && !temaData && !claseData) {
       return (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
           <Card>
@@ -1512,162 +951,172 @@ export default function GenerarClase() {
       );
     }
 
-  // Calculate progress based on completion status
-  const totalSteps = isClaseCompletada ? 4 : STEPS.length;
-  const progress = (currentStep / totalSteps) * 100;
+    const totalSteps = STEPS.length;
+    const progress = (currentStep / totalSteps) * 100;
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={handleVolverSeleccion}>
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-primary" />
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-primary" />
               {isExtraordinaria ? 'Crear Clase Extraordinaria' : 'Generar Clase con IA'}
-          </h1>
-          <p className="text-muted-foreground">
-            Crea clases centradas en el desarrollo del pensamiento crítico
-          </p>
+            </h1>
+            <p className="text-muted-foreground">
+              Crea clases centradas en el desarrollo del pensamiento crítico
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Progress */}
-      <div className="space-y-4">
-        <div className="flex justify-between">
-          {STEPS.filter(step => !isClaseCompletada || step.id <= 4).map((step) => (
-            <div 
-              key={step.id}
-              className={`flex items-center gap-2 ${
-                step.id === currentStep 
-                  ? 'text-primary' 
-                  : step.id < currentStep 
-                    ? 'text-success' 
-                    : 'text-muted-foreground'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step.id === currentStep 
-                  ? 'gradient-bg text-primary-foreground' 
-                  : step.id < currentStep 
-                    ? 'bg-success text-success-foreground' 
-                    : 'bg-muted'
-              }`}>
-                {step.id < currentStep ? (
-                  <CheckCircle2 className="w-4 h-4" />
-                ) : (
-                  <step.icon className="w-4 h-4" />
-                )}
-              </div>
-              <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
-            </div>
-          ))}
-        </div>
-        <Progress value={progress} className="h-2" />
-      </div>
-
-      {/* Step content */}
-      <Card>
-        <CardContent className="p-6">
-          {/* Step 1: Context - Nuevo diseño con 4 secciones */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              {/* Read-only mode banner for completed classes */}
-              {isClaseCompletada && (
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Lock className="w-5 h-5" />
-                    <span className="font-medium">Modo solo lectura - Esta clase está completada y no puede ser editada</span>
-                  </div>
+        {/* Progress */}
+        <div className="space-y-4">
+          <div className="flex justify-between">
+            {STEPS.map((step) => (
+              <div 
+                key={step.id}
+                className={`flex items-center gap-2 ${
+                  step.id === currentStep 
+                    ? 'text-primary' 
+                    : step.id < currentStep 
+                      ? 'text-success' 
+                      : 'text-muted-foreground'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  step.id === currentStep 
+                    ? 'gradient-bg text-primary-foreground' 
+                    : step.id < currentStep 
+                      ? 'bg-success text-success-foreground' 
+                      : 'bg-muted'
+                }`}>
+                  {step.id < currentStep ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <step.icon className="w-4 h-4" />
+                  )}
                 </div>
-              )}
-              
-              {/* SECCIÓN 1: DATOS */}
-              <fieldset className="p-4 border rounded-lg space-y-4">
-                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  Datos
-                </legend>
+                <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
+              </div>
+            ))}
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        {/* Step content */}
+        <Card>
+          <CardContent className="p-6">
+            {/* Step 1: Context */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                {/* Read-only mode banner for completed classes */}
+                {isClaseCompletada && (
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Lock className="w-5 h-5" />
+                      <span className="font-medium">Modo solo lectura - Esta clase está completada</span>
+                    </div>
+                  </div>
+                )}
                 
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Tema */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                      Tema {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
-                    </Label>
-                    {isExtraordinaria ? (
-                      <Input 
-                        value={formData.temaPersonalizado} 
-                        onChange={(e) => setFormData({...formData, temaPersonalizado: e.target.value})}
-                        placeholder="Escribe el tema de la clase"
+                {/* SECCIÓN 1: DATOS */}
+                <fieldset className="p-4 border rounded-lg space-y-4">
+                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    Datos
+                  </legend>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Tema */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Tema {!isExtraordinaria && <Lock className="w-3 h-3 text-muted-foreground" />}
+                      </Label>
+                      {isExtraordinaria ? (
+                        <Input 
+                          value={formData.temaPersonalizado} 
+                          onChange={(e) => setFormData({...formData, temaPersonalizado: e.target.value})}
+                          placeholder="Escribe el tema de la clase"
+                          disabled={isClaseCompletada}
+                        />
+                      ) : (
+                        <Input value={temaData?.nombre || ''} disabled />
+                      )}
+                    </div>
+
+                    {/* Duración */}
+                    <div className="space-y-2">
+                      <Label>Duración de la sesión</Label>
+                      <Select 
+                        value={String(formData.duracion)} 
+                        onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
+                        disabled={isClaseCompletada}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DURACIONES.map(d => (
+                            <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Grupo - siempre visible */}
+                    <div className="space-y-2">
+                      <Label>Grupo *</Label>
+                      {isExtraordinaria ? (
+                        <Select 
+                          value={grupoData?.id || ''} 
+                          onValueChange={(value) => {
+                            const grupo = grupos.find(g => g?.id === value);
+                            setGrupoData(grupo);
+                          }}
+                          disabled={isClaseCompletada}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un grupo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {grupos.filter(Boolean).map(g => (
+                              <SelectItem key={g!.id} value={g!.id}>
+                                {g!.nombre || `${g!.grado} ${g!.seccion || ''}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input value={grupoData?.nombre || `${grupoData?.grado} ${grupoData?.seccion || ''}`} disabled />
+                      )}
+                    </div>
+
+                    {/* Fecha */}
+                    <div className="space-y-2">
+                      <Label>Fecha programada *</Label>
+                      <DatePicker
+                        value={formData.fecha}
+                        onChange={(value) => setFormData({...formData, fecha: value})}
+                        placeholder="Selecciona una fecha"
                         disabled={isClaseCompletada}
                       />
-                    ) : (
-                      <Input value={temaData?.nombre || ''} disabled />
-                    )}
+                    </div>
                   </div>
 
-                  {/* Duración */}
-                  <div className="space-y-2">
-                    <Label>Duración de la sesión</Label>
-                    <Select 
-                      value={String(formData.duracion)} 
-                      onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
-                      disabled={isClaseCompletada}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DURACIONES.map(d => (
-                          <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Nivel */}
-                  <div className="space-y-2">
-                    <Label>Nivel</Label>
-                    <Select 
-                      value={formData.nivel} 
-                      onValueChange={(value) => setFormData({...formData, nivel: value, grado: ''})}
-                      disabled={isClaseCompletada}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona nivel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NIVELES.map(n => (
-                          <SelectItem key={n.id} value={n.id}>{n.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Grado */}
-                  <div className="space-y-2">
-                    <Label>Grado</Label>
-                    <Select 
-                      value={formData.grado} 
-                      onValueChange={(value) => setFormData({...formData, grado: value})}
-                      disabled={isClaseCompletada || !formData.nivel}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={formData.nivel ? "Selecciona grado" : "Primero selecciona nivel"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(formData.nivel === 'primaria' ? GRADOS_PRIMARIA : GRADOS_SECUNDARIA).map(g => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Info derivada del grupo */}
+                  {grupoData && gradoInfo && (
+                    <div className="flex gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                      <span><strong>Nivel:</strong> {gradoInfo.nivel}</span>
+                      <span><strong>Grado:</strong> {gradoInfo.gradoNum}°</span>
+                      <span><strong>Sección:</strong> {grupoData.seccion || 'N/A'}</span>
+                    </div>
+                  )}
 
                   {/* Área Académica */}
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2">
                     <Label>Área Académica</Label>
                     <Select 
                       value={formData.areaAcademica} 
@@ -1684,954 +1133,564 @@ export default function GenerarClase() {
                       </SelectContent>
                     </Select>
                   </div>
+                </fieldset>
 
-                  {/* Grupo (solo extraordinaria) */}
-                  {isExtraordinaria && (
+                {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE */}
+                <fieldset className="p-4 border rounded-lg space-y-4">
+                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-primary" />
+                    Propósitos de Aprendizaje
+                  </legend>
+                  
+                  <div className="grid gap-4">
+                    {/* Competencias */}
                     <div className="space-y-2">
-                      <Label>Grupo *</Label>
+                      <Label>Competencias (selección múltiple)</Label>
+                      <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                        {formData.areaAcademica ? (
+                          competenciasCNEB.map(comp => (
+                            <Badge
+                              key={comp.id}
+                              variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
+                              className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                              onClick={() => {
+                                if (!isClaseCompletada) {
+                                  const newComps = formData.competencias.includes(comp.id)
+                                    ? formData.competencias.filter(c => c !== comp.id)
+                                    : [...formData.competencias, comp.id];
+                                  setFormData({...formData, competencias: newComps, capacidades: []});
+                                }
+                              }}
+                            >
+                              {comp.nombre}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Capacidades */}
+                    <div className="space-y-2">
+                      <Label>Capacidades (selección múltiple)</Label>
+                      <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                        {formData.competencias.length > 0 ? (
+                          capacidadesCNEB.map(cap => (
+                            <Badge
+                              key={cap.id}
+                              variant={formData.capacidades.includes(cap.id) ? 'default' : 'outline'}
+                              className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                              onClick={() => {
+                                if (!isClaseCompletada) {
+                                  const newCaps = formData.capacidades.includes(cap.id)
+                                    ? formData.capacidades.filter(c => c !== cap.id)
+                                    : [...formData.capacidades, cap.id];
+                                  setFormData({...formData, capacidades: newCaps});
+                                }
+                              }}
+                            >
+                              {cap.nombre}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Primero selecciona competencias</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Desempeño con botón IA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Desempeño esperado</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerarDesempeno}
+                          disabled={
+                            formData.competencias.length === 0 || 
+                            formData.capacidades.length === 0 || 
+                            isGeneratingDesempeno ||
+                            isClaseCompletada
+                          }
+                          className="gap-2"
+                        >
+                          {isGeneratingDesempeno ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Generando...
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-4 h-4" />
+                              Generar con IA
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <Textarea 
+                        placeholder="Describe el desempeño o usa el botón para generarlo automáticamente..."
+                        value={formData.desempeno}
+                        onChange={(e) => setFormData({...formData, desempeno: e.target.value})}
+                        rows={3}
+                        disabled={isClaseCompletada}
+                      />
+                      {formData.competencias.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Selecciona competencias y capacidades para habilitar la generación automática
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Enfoque Transversal */}
+                    <div className="space-y-2">
+                      <Label>Enfoque Transversal</Label>
                       <Select 
-                        value={grupoData?.id || ''} 
-                        onValueChange={(value) => {
-                          const grupo = grupos.find(g => g?.id === value);
-                          setGrupoData(grupo);
-                        }}
+                        value={formData.enfoqueTransversal} 
+                        onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
                         disabled={isClaseCompletada}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un grupo" />
+                          <SelectValue placeholder="Selecciona un enfoque" />
                         </SelectTrigger>
                         <SelectContent>
-                          {grupos.filter(Boolean).map(g => (
-                            <SelectItem key={g!.id} value={g!.id}>
-                              {g!.nombre || `${g!.grado}° ${g!.seccion || ''}`}
-                            </SelectItem>
+                          {enfoques.map(enfoque => (
+                            <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
+                  </div>
+                </fieldset>
 
-                  {/* Fecha */}
+                {/* SECCIÓN 3: MATERIALES DISPONIBLES */}
+                <fieldset className="p-4 border rounded-lg space-y-4">
+                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-primary" />
+                    Materiales Disponibles
+                  </legend>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {MATERIALES_DISPONIBLES.map(mat => (
+                      <div key={mat.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`mat-${mat.id}`}
+                          checked={formData.materiales.includes(mat.id)}
+                          onCheckedChange={(checked) => {
+                            if (!isClaseCompletada) {
+                              const newMats = checked 
+                                ? [...formData.materiales, mat.id]
+                                : formData.materiales.filter(m => m !== mat.id);
+                              setFormData({...formData, materiales: newMats});
+                            }
+                          }}
+                          disabled={isClaseCompletada}
+                        />
+                        <Label htmlFor={`mat-${mat.id}`} className="cursor-pointer text-sm">{mat.nombre}</Label>
+                      </div>
+                    ))}
+                  </div>
+                  
                   <div className="space-y-2">
-                    <Label>Fecha programada</Label>
-                    <DatePicker
-                      value={formData.fecha}
-                      onChange={(value) => setFormData({...formData, fecha: value})}
-                      placeholder="Selecciona una fecha"
+                    <Label>Otro material (opcional)</Label>
+                    <Input 
+                      placeholder="Especifica otros materiales..."
+                      value={formData.materialOtro}
+                      onChange={(e) => setFormData({...formData, materialOtro: e.target.value})}
                       disabled={isClaseCompletada}
                     />
                   </div>
-                </div>
-              </fieldset>
+                </fieldset>
 
-              {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE */}
-              <fieldset className="p-4 border rounded-lg space-y-4">
-                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  Propósitos de Aprendizaje
-                </legend>
-                
-                <div className="grid gap-4">
-                  {/* Competencias */}
-                  <div className="space-y-2">
-                    <Label>Competencias (selección múltiple)</Label>
-                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                      {formData.areaAcademica ? (
-                        competenciasCNEB.map(comp => (
-                          <Badge
-                            key={comp.id}
-                            variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
-                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                            onClick={() => {
-                              if (!isClaseCompletada) {
-                                const newComps = formData.competencias.includes(comp.id)
-                                  ? formData.competencias.filter(c => c !== comp.id)
-                                  : [...formData.competencias, comp.id];
-                                setFormData({...formData, competencias: newComps, capacidades: []});
-                              }
-                            }}
-                          >
-                            {comp.nombre}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
-                      )}
-                    </div>
+                {/* SECCIÓN 4: ADAPTACIONES */}
+                <fieldset className="p-4 border rounded-lg space-y-4">
+                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-primary" />
+                    Adaptaciones (NEE)
+                  </legend>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {tiposAdaptacion.map(tipo => (
+                      <div key={tipo.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`adapt-${tipo.id}`}
+                          checked={formData.adaptaciones.includes(tipo.id)}
+                          onCheckedChange={(checked) => {
+                            if (!isClaseCompletada) {
+                              const newAdapts = checked 
+                                ? [...formData.adaptaciones, tipo.id]
+                                : formData.adaptaciones.filter(a => a !== tipo.id);
+                              setFormData({...formData, adaptaciones: newAdapts});
+                            }
+                          }}
+                          disabled={isClaseCompletada}
+                        />
+                        <Label htmlFor={`adapt-${tipo.id}`} className="cursor-pointer text-sm">{tipo.nombre}</Label>
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Capacidades */}
                   <div className="space-y-2">
-                    <Label>Capacidades (selección múltiple)</Label>
-                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                      {formData.competencias.length > 0 ? (
-                        capacidadesCNEB.map(cap => (
-                          <Badge
-                            key={cap.id}
-                            variant={formData.capacidades.includes(cap.id) ? 'default' : 'outline'}
-                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                            onClick={() => {
-                              if (!isClaseCompletada) {
-                                const newCaps = formData.capacidades.includes(cap.id)
-                                  ? formData.capacidades.filter(c => c !== cap.id)
-                                  : [...formData.capacidades, cap.id];
-                                setFormData({...formData, capacidades: newCaps});
-                              }
-                            }}
-                          >
-                            {cap.nombre}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Primero selecciona competencias</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Desempeño */}
-                  <div className="space-y-2">
-                    <Label>Desempeño esperado</Label>
+                    <Label>Adaptaciones personalizadas (opcional)</Label>
                     <Textarea 
-                      placeholder="Describe el desempeño que se espera lograr en esta sesión..."
-                      value={formData.desempeno}
-                      onChange={(e) => setFormData({...formData, desempeno: e.target.value})}
+                      placeholder="Describe adaptaciones específicas para estudiantes con NEE..."
+                      value={formData.adaptacionesPersonalizadas}
+                      onChange={(e) => setFormData({...formData, adaptacionesPersonalizadas: e.target.value})}
                       rows={2}
                       disabled={isClaseCompletada}
                     />
                   </div>
+                </fieldset>
 
-                  {/* Enfoque Transversal */}
+                {/* SECCIÓN 5: CONTEXTO */}
+                <fieldset className="p-4 border rounded-lg space-y-4">
+                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                    <Info className="w-5 h-5 text-primary" />
+                    Contexto Adicional
+                  </legend>
+                  
                   <div className="space-y-2">
-                    <Label>Enfoque Transversal</Label>
-                    <Select 
-                      value={formData.enfoqueTransversal} 
-                      onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
+                    <Label>Contexto del grupo (opcional)</Label>
+                    <Textarea 
+                      placeholder="Describe características particulares del grupo, intereses, conocimientos previos..."
+                      value={formData.contexto}
+                      onChange={(e) => setFormData({...formData, contexto: e.target.value})}
+                      rows={3}
                       disabled={isClaseCompletada}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un enfoque" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {enfoques.map(enfoque => (
-                          <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
-                </div>
-              </fieldset>
-
-              {/* SECCIÓN 3: MATERIALES DISPONIBLES */}
-              <fieldset className="p-4 border rounded-lg space-y-4">
-                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-primary" />
-                  Materiales Disponibles
-                </legend>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {MATERIALES_DISPONIBLES.map(mat => (
-                    <div key={mat.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`mat-${mat.id}`}
-                        checked={formData.materiales.includes(mat.id)}
-                        onCheckedChange={(checked) => {
-                          if (!isClaseCompletada) {
-                            const newMats = checked 
-                              ? [...formData.materiales, mat.id]
-                              : formData.materiales.filter(m => m !== mat.id);
-                            setFormData({...formData, materiales: newMats});
-                          }
-                        }}
-                        disabled={isClaseCompletada}
-                      />
-                      <Label htmlFor={`mat-${mat.id}`} className="cursor-pointer text-sm">{mat.nombre}</Label>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Otro material (opcional)</Label>
-                  <Input 
-                    placeholder="Especifica otros materiales..."
-                    value={formData.materialOtro}
-                    onChange={(e) => setFormData({...formData, materialOtro: e.target.value})}
-                    disabled={isClaseCompletada}
-                  />
-                </div>
-              </fieldset>
-
-              {/* SECCIÓN 4: ADAPTACIONES */}
-              <fieldset className="p-4 border rounded-lg space-y-4">
-                <legend className="text-lg font-semibold px-2 flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-primary" />
-                  Adaptaciones (NEE)
-                </legend>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {tiposAdaptacion.map(tipo => (
-                    <div key={tipo.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`adapt-${tipo.id}`}
-                        checked={formData.adaptaciones.includes(tipo.id)}
-                        onCheckedChange={(checked) => {
-                          if (!isClaseCompletada) {
-                            const newAdapts = checked 
-                              ? [...formData.adaptaciones, tipo.id]
-                              : formData.adaptaciones.filter(a => a !== tipo.id);
-                            setFormData({...formData, adaptaciones: newAdapts});
-                          }
-                        }}
-                        disabled={isClaseCompletada}
-                      />
-                      <Label htmlFor={`adapt-${tipo.id}`} className="cursor-pointer text-sm" title={tipo.descripcion || ''}>
-                        {tipo.nombre}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Otras adaptaciones (opcional)</Label>
-                  <Textarea 
-                    placeholder="Describe otras adaptaciones o consideraciones especiales..."
-                    value={formData.adaptacionesPersonalizadas}
-                    onChange={(e) => setFormData({...formData, adaptacionesPersonalizadas: e.target.value})}
-                    rows={2}
-                    disabled={isClaseCompletada}
-                  />
-                </div>
-              </fieldset>
-
-              {/* Contexto del salón */}
-              <div className="space-y-2">
-                <Label>Contexto específico del salón</Label>
-                <Textarea 
-                  placeholder="Describe el contexto del salón: conocimientos previos, dinámica del aula, características del grupo..."
-                  value={formData.contexto}
-                  onChange={(e) => setFormData({...formData, contexto: e.target.value})}
-                  rows={3}
-                  disabled={isClaseCompletada}
-                />
+                </fieldset>
               </div>
+            )}
 
-              {/* Opción de generación en paralelo */}
-              {!isClaseCompletada && (
-                <div className="flex items-center space-x-2 p-4 rounded-lg border bg-muted/30">
-                  <Checkbox 
-                    id="generar-paralelo" 
-                    checked={generarEnParalelo}
-                    onCheckedChange={(checked) => setGenerarEnParalelo(checked === true)}
-                  />
-                  <Label htmlFor="generar-paralelo" className="cursor-pointer">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">Generar todo en paralelo</span>
-                      <span className="text-xs text-muted-foreground">
-                        Genera la guía y ambos quizzes simultáneamente
+            {/* Step 2: Guía de Clase */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                {/* Read-only mode banner for completed classes */}
+                {isClaseCompletada && (
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Lock className="w-5 h-5" />
+                      <span className="font-medium">Modo solo lectura - Esta clase está completada</span>
+                    </div>
+                  </div>
+                )}
+
+                {isGenerating ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
+                    <h2 className="text-lg font-semibold mb-2">Generando Guía de Clase</h2>
+                    <p className="text-muted-foreground">
+                      El Arquitecto Pedagógico está creando tu experiencia de aprendizaje...
+                    </p>
+                  </div>
+                ) : !guiaGenerada ? (
+                  <div className="text-center py-12">
+                    <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      No hay guía generada. Vuelve al paso anterior.
+                    </p>
+                    {!isClaseCompletada && (
+                      <Button variant="outline" className="mt-4" onClick={() => setCurrentStep(1)}>
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Volver a Contexto
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
+
+                {guiaGenerada && (
+                  <div className="space-y-6 animate-fade-in">
+                    {/* Success Banner */}
+                    <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                      <div className="flex items-center gap-2 text-success">
+                        <BookOpen className="w-5 h-5" />
+                        <span className="font-medium">{claseData?.id_guia_version_actual ? 'Guía de clase cargada' : 'Guía generada exitosamente'}</span>
+                      </div>
+                    </div>
+
+                    {/* Datos Generales Header */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                      <h3 className="text-lg font-bold text-primary mb-1">{guiaGenerada.datos_generales.titulo_sesion}</h3>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" />
+                          {guiaGenerada.datos_generales.nivel} - {guiaGenerada.datos_generales.grado}
+                        </Badge>
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          {guiaGenerada.datos_generales.area_academica}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Propósitos de Aprendizaje - Table */}
+                    <div className="p-4 rounded-lg border bg-card">
+                      <h4 className="font-semibold flex items-center gap-2 mb-3">
+                        <Target className="w-4 h-4 text-primary" />
+                        Propósitos de Aprendizaje
+                      </h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="text-left p-2 font-medium">Competencia</th>
+                              <th className="text-left p-2 font-medium">Criterios de Evaluación</th>
+                              <th className="text-left p-2 font-medium">Evidencia</th>
+                              <th className="text-left p-2 font-medium">Instrumento</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {guiaGenerada.propositos_aprendizaje.map((prop, i) => (
+                              <tr key={i} className="border-b">
+                                <td className="p-2">{prop.competencia}</td>
+                                <td className="p-2">{prop.criterios_evaluacion}</td>
+                                <td className="p-2">{prop.evidencia_aprendizaje}</td>
+                                <td className="p-2">
+                                  <Badge variant="secondary">{prop.instrumento_valoracion}</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Enfoques Transversales */}
+                    <div className="p-4 rounded-lg border bg-card">
+                      <h4 className="font-semibold flex items-center gap-2 mb-3">
+                        <Heart className="w-4 h-4 text-rose-500" />
+                        Enfoques Transversales
+                      </h4>
+                      <div className="flex flex-wrap gap-3">
+                        {guiaGenerada.enfoques_transversales.map((enfoque, i) => (
+                          <div key={i} className="p-3 rounded-lg bg-rose-50/50 border border-rose-200">
+                            <span className="font-medium text-rose-700">{enfoque.nombre}</span>
+                            <p className="text-sm text-muted-foreground mt-1">{enfoque.descripcion}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Preparación */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg border bg-card">
+                        <h4 className="font-semibold mb-3">¿Qué necesitamos hacer antes de la sesión?</h4>
+                        <p className="text-sm text-muted-foreground">{guiaGenerada.preparacion.antes_sesion}</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-card">
+                        <h4 className="font-semibold mb-3">Materiales</h4>
+                        <ul className="space-y-1">
+                          {guiaGenerada.preparacion.materiales.map((mat, i) => (
+                            <li key={i} className="text-sm flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                              {mat}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Momentos de la Sesión */}
+                    <div>
+                      <h4 className="font-semibold mb-4 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-primary" />
+                        Momentos de la Sesión
+                      </h4>
+                      <div className="space-y-4">
+                        {guiaGenerada.momentos_sesion.map((fase, i) => {
+                          const faseColors: Record<string, string> = {
+                            INICIO: 'border-l-amber-500 bg-amber-50/50',
+                            DESARROLLO: 'border-l-blue-500 bg-blue-50/50',
+                            CIERRE: 'border-l-green-500 bg-green-50/50'
+                          };
+                          const faseTextColors: Record<string, string> = {
+                            INICIO: 'text-amber-700',
+                            DESARROLLO: 'text-blue-700',
+                            CIERRE: 'text-green-700'
+                          };
+                          return (
+                            <div 
+                              key={i} 
+                              className={`p-4 rounded-lg border-l-4 ${faseColors[fase.fase] || 'border-l-gray-500 bg-gray-50/50'}`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`font-bold ${faseTextColors[fase.fase] || 'text-gray-700'}`}>
+                                  {fase.fase}
+                                </span>
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {fase.duracion}
+                                </Badge>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap">{fase.actividades}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Adaptaciones Sugeridas */}
+                    {guiaGenerada.adaptaciones_sugeridas && (
+                      <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-purple-600" />
+                          Adaptaciones Sugeridas
+                        </h4>
+                        <p className="text-sm">{guiaGenerada.adaptaciones_sugeridas.estrategias_diferenciadas}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Validar */}
+            {currentStep === 3 && !isClaseCompletada && (
+              <div className="space-y-6">
+                <div className="text-center py-4">
+                  <FileCheck className="w-12 h-12 text-primary mx-auto mb-4" />
+                  <h2 className="text-lg font-semibold mb-2">Validar y Finalizar</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Revisa que la guía esté completa
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    { label: 'Contexto de la clase', completed: true },
+                    { label: 'Guía de clase generada', completed: !!guiaGenerada }
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-4 rounded-lg ${item.completed ? 'bg-success/10' : 'bg-muted'}`}>
+                      {item.completed ? (
+                        <CheckCircle2 className="w-5 h-5 text-success" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />
+                      )}
+                      <span className={item.completed ? 'text-success font-medium' : 'text-muted-foreground'}>
+                        {item.label}
                       </span>
                     </div>
-                  </Label>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Step 2: Generate Guide */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              {/* Read-only mode banner for completed classes */}
-              {isClaseCompletada && (
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Lock className="w-5 h-5" />
-                    <span className="font-medium">Modo solo lectura - Esta clase está completada y no puede ser editada</span>
+                {guiaGenerada && (
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <p className="font-medium text-primary">¡Todo listo!</p>
+                    <p className="text-sm text-muted-foreground">Tu clase está preparada para ser impartida</p>
                   </div>
-                </div>
-              )}
-              
-              {isGenerating && generarEnParalelo ? (
-                <div className="space-y-4">
-                  <div className="text-center py-4">
-                    <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
-                    <h2 className="text-lg font-semibold mb-2">Generando en Paralelo</h2>
-                    <p className="text-muted-foreground">
-                      Generando guía y quizzes simultáneamente...
-                    </p>
-                  </div>
-                  
-                  {/* Progress indicators */}
-                  <div className="space-y-3">
-                    <div className={`p-3 rounded-lg border ${
-                      generacionProgreso.guia.estado === 'completado' ? 'bg-success/10 border-success/20' :
-                      generacionProgreso.guia.estado === 'error' ? 'bg-destructive/10 border-destructive/20' :
-                      'bg-muted/50'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {generacionProgreso.guia.estado === 'completado' ? (
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                          ) : generacionProgreso.guia.estado === 'error' ? (
-                            <X className="w-5 h-5 text-destructive" />
-                          ) : (
-                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                          )}
-                          <span className="font-medium">Guía de Clase</span>
-                        </div>
-                        <Badge variant={
-                          generacionProgreso.guia.estado === 'completado' ? 'default' :
-                          generacionProgreso.guia.estado === 'error' ? 'destructive' :
-                          'secondary'
-                        }>
-                          {generacionProgreso.guia.estado === 'completado' ? 'Completado' :
-                           generacionProgreso.guia.estado === 'error' ? 'Error' :
-                           'Generando...'}
-                        </Badge>
-                      </div>
-                      {generacionProgreso.guia.error && (
-                        <p className="text-xs text-destructive mt-2">{generacionProgreso.guia.error}</p>
-                      )}
-                    </div>
-
-                    <div className={`p-3 rounded-lg border ${
-                      generacionProgreso.quizPre.estado === 'completado' ? 'bg-success/10 border-success/20' :
-                      generacionProgreso.quizPre.estado === 'error' ? 'bg-destructive/10 border-destructive/20' :
-                      'bg-muted/50'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {generacionProgreso.quizPre.estado === 'completado' ? (
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                          ) : generacionProgreso.quizPre.estado === 'error' ? (
-                            <X className="w-5 h-5 text-destructive" />
-                          ) : (
-                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                          )}
-                          <span className="font-medium">Quiz PRE</span>
-                        </div>
-                        <Badge variant={
-                          generacionProgreso.quizPre.estado === 'completado' ? 'default' :
-                          generacionProgreso.quizPre.estado === 'error' ? 'destructive' :
-                          'secondary'
-                        }>
-                          {generacionProgreso.quizPre.estado === 'completado' ? 'Completado' :
-                           generacionProgreso.quizPre.estado === 'error' ? 'Error' :
-                           'Generando...'}
-                        </Badge>
-                      </div>
-                      {generacionProgreso.quizPre.error && (
-                        <p className="text-xs text-destructive mt-2">{generacionProgreso.quizPre.error}</p>
-                      )}
-                    </div>
-
-                    <div className={`p-3 rounded-lg border ${
-                      generacionProgreso.quizPost.estado === 'completado' ? 'bg-success/10 border-success/20' :
-                      generacionProgreso.quizPost.estado === 'error' ? 'bg-destructive/10 border-destructive/20' :
-                      'bg-muted/50'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {generacionProgreso.quizPost.estado === 'completado' ? (
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                          ) : generacionProgreso.quizPost.estado === 'error' ? (
-                            <X className="w-5 h-5 text-destructive" />
-                          ) : (
-                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                          )}
-                          <span className="font-medium">Quiz POST</span>
-                        </div>
-                        <Badge variant={
-                          generacionProgreso.quizPost.estado === 'completado' ? 'default' :
-                          generacionProgreso.quizPost.estado === 'error' ? 'destructive' :
-                          'secondary'
-                        }>
-                          {generacionProgreso.quizPost.estado === 'completado' ? 'Completado' :
-                           generacionProgreso.quizPost.estado === 'error' ? 'Error' :
-                           'Generando...'}
-                        </Badge>
-                      </div>
-                      {generacionProgreso.quizPost.error && (
-                        <p className="text-xs text-destructive mt-2">{generacionProgreso.quizPost.error}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : isGenerating ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
-                  <h2 className="text-lg font-semibold mb-2">Generando Guía de Clase</h2>
-                  <p className="text-muted-foreground">
-                    El Arquitecto Pedagógico está creando tu experiencia de aprendizaje...
-                  </p>
-                </div>
-              ) : !guiaGenerada ? (
-                <div className="text-center py-12">
-                  <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    No hay guía generada. Vuelve al paso anterior.
-                  </p>
-                  {!isClaseCompletada && (
-                    <Button variant="outline" className="mt-4" onClick={() => setCurrentStep(1)}>
-                      <ChevronLeft className="w-4 h-4 mr-2" />
-                      Volver a Contexto
-                    </Button>
-                  )}
-                </div>
-              ) : null}
-
-              {guiaGenerada && (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Success Banner */}
-                  <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                    <div className="flex items-center gap-2 text-success">
-                      <BookOpen className="w-5 h-5" />
-                      <span className="font-medium">{claseData?.id_guia_version_actual ? 'Guía de clase cargada' : 'Guía generada exitosamente'}</span>
-                    </div>
-                  </div>
-
-                  {/* Datos Generales Header */}
-                  <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
-                    <h3 className="text-lg font-bold text-primary mb-1">{guiaGenerada.datos_generales.titulo_sesion}</h3>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <GraduationCap className="w-3 h-3" />
-                        {guiaGenerada.datos_generales.nivel} - {guiaGenerada.datos_generales.grado}
-                      </Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        {guiaGenerada.datos_generales.area_academica}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Propósitos de Aprendizaje - Table */}
-                  <div className="p-4 rounded-lg border bg-card">
-                    <h4 className="font-semibold flex items-center gap-2 mb-3">
-                      <Target className="w-4 h-4 text-primary" />
-                      Propósitos de Aprendizaje
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="text-left p-2 font-medium">Competencia</th>
-                            <th className="text-left p-2 font-medium">Criterios de Evaluación</th>
-                            <th className="text-left p-2 font-medium">Evidencia</th>
-                            <th className="text-left p-2 font-medium">Instrumento</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {guiaGenerada.propositos_aprendizaje.map((prop, i) => (
-                            <tr key={i} className="border-b">
-                              <td className="p-2">{prop.competencia}</td>
-                              <td className="p-2">{prop.criterios_evaluacion}</td>
-                              <td className="p-2">{prop.evidencia_aprendizaje}</td>
-                              <td className="p-2">
-                                <Badge variant="secondary">{prop.instrumento_valoracion}</Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Enfoques Transversales */}
-                  <div className="p-4 rounded-lg border bg-card">
-                    <h4 className="font-semibold flex items-center gap-2 mb-3">
-                      <Heart className="w-4 h-4 text-rose-500" />
-                      Enfoques Transversales
-                    </h4>
-                    <div className="flex flex-wrap gap-3">
-                      {guiaGenerada.enfoques_transversales.map((enfoque, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-rose-50/50 border border-rose-200">
-                          <span className="font-medium text-rose-700">{enfoque.nombre}</span>
-                          <p className="text-sm text-muted-foreground mt-1">{enfoque.descripcion}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Preparación */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold mb-3">¿Qué necesitamos hacer antes de la sesión?</h4>
-                      <p className="text-sm text-muted-foreground">{guiaGenerada.preparacion.antes_sesion}</p>
-                    </div>
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold mb-3">Materiales</h4>
-                      <ul className="space-y-1">
-                        {guiaGenerada.preparacion.materiales.map((mat, i) => (
-                          <li key={i} className="text-sm flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                            {mat}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Momentos de la Sesión */}
-                  <div>
-                    <h4 className="font-semibold mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-primary" />
-                      Momentos de la Sesión
-                    </h4>
-                    <div className="space-y-4">
-                      {guiaGenerada.momentos_sesion.map((fase, i) => {
-                        const faseColors = {
-                          INICIO: 'border-l-amber-500 bg-amber-50/50',
-                          DESARROLLO: 'border-l-blue-500 bg-blue-50/50',
-                          CIERRE: 'border-l-green-500 bg-green-50/50'
-                        };
-                        const faseTextColors = {
-                          INICIO: 'text-amber-700',
-                          DESARROLLO: 'text-blue-700',
-                          CIERRE: 'text-green-700'
-                        };
-                        return (
-                          <div 
-                            key={i} 
-                            className={`p-4 rounded-lg border-l-4 ${faseColors[fase.fase] || 'border-l-gray-500 bg-gray-50/50'}`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`font-bold ${faseTextColors[fase.fase] || 'text-gray-700'}`}>
-                                {fase.fase}
-                              </span>
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {fase.duracion}
-                              </Badge>
-                            </div>
-                            <p className="text-sm whitespace-pre-wrap">{fase.actividades}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Adaptaciones Sugeridas */}
-                  {guiaGenerada.adaptaciones_sugeridas && (
-                    <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Lightbulb className="w-4 h-4 text-purple-600" />
-                        Adaptaciones Sugeridas
-                      </h4>
-                      <p className="text-sm">{guiaGenerada.adaptaciones_sugeridas.estrategias_diferenciadas}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 3: Quiz PRE */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              {/* Read-only mode banner for completed classes */}
-              {isClaseCompletada && (
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Lock className="w-5 h-5" />
-                    <span className="font-medium">Modo solo lectura - Esta clase está completada y no puede ser editada</span>
-                  </div>
-                </div>
-              )}
-              
-              {!quizPreData && (
+                )}
+              </div>
+            )}
+            
+            {/* Show completion message if class is completed and on step 3 */}
+            {currentStep === 3 && isClaseCompletada && (
+              <div className="space-y-6">
                 <div className="text-center py-4">
-                  <ClipboardList className="w-12 h-12 text-info mx-auto mb-4" />
-                  <h2 className="text-lg font-semibold mb-2">Micro-Learning (PRE)</h2>
+                  <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
+                  <h2 className="text-lg font-semibold mb-2">Clase Completada</h2>
                   <p className="text-muted-foreground mb-6">
-                    Estímulo de aprendizaje + 3 preguntas de comprensión
+                    Esta clase ya ha sido completada y validada
                   </p>
-                  <Button variant="gradient" size="lg" onClick={handleGenerarQuizPre} disabled={isGenerating || isClaseCompletada}>
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Generando...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5" />
-                        Generar Micro-Learning
-                      </>
-                    )}
-                  </Button>
                 </div>
-              )}
 
-              {quizPreData && (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Success Banner */}
-                  <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                    <div className="flex items-center gap-2 text-success">
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span className="font-medium">Micro-Learning generado ({quizPreData.quiz_comprension.length} preguntas)</span>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Contexto de la clase', completed: true },
+                    { label: 'Guía de clase generada', completed: !!guiaGenerada }
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-4 rounded-lg ${item.completed ? 'bg-success/10' : 'bg-muted'}`}>
+                      {item.completed ? (
+                        <CheckCircle2 className="w-5 h-5 text-success" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />
+                      )}
+                      <span className={item.completed ? 'text-success font-medium' : 'text-muted-foreground'}>
+                        {item.label}
+                      </span>
                     </div>
-                  </div>
-
-                  {/* Estímulo de Aprendizaje */}
-                  <div className="p-6 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Eye className="w-5 h-5 text-blue-600" />
-                      <h3 className="font-bold text-blue-900">Estímulo de Aprendizaje</h3>
-                      <Badge variant="secondary" className="ml-auto flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {quizPreData.estimulo_aprendizaje.tiempo_lectura_estimado}
-                      </Badge>
-                    </div>
-                    
-                    <h4 className="text-xl font-semibold text-blue-800 mb-3">
-                      {quizPreData.estimulo_aprendizaje.titulo}
-                    </h4>
-                    
-                    <p className="text-blue-900/80 leading-relaxed mb-4">
-                      {quizPreData.estimulo_aprendizaje.texto_contenido}
-                    </p>
-                    
-                    {/* Visual description placeholder */}
-                    <div className="p-4 rounded-lg bg-white/60 border border-blue-200">
-                      <div className="flex items-center gap-2 text-blue-600 mb-2">
-                        <ImageIcon className="w-4 h-4" />
-                        <span className="text-sm font-medium">Descripción Visual (para generar imagen)</span>
-                      </div>
-                      <p className="text-sm text-blue-800/70 italic">
-                        {quizPreData.estimulo_aprendizaje.descripcion_visual}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Preguntas de Comprensión */}
-                  <div>
-                    <h4 className="font-semibold mb-4 flex items-center gap-2">
-                      <ClipboardList className="w-4 h-4 text-primary" />
-                      Preguntas de Comprensión
-                    </h4>
-                    <div className="space-y-4">
-                      {quizPreData.quiz_comprension.map((pregunta, i) => (
-                        <div key={i} className="p-4 rounded-lg border bg-card">
-                          {/* Concepto sutil en gris cursiva */}
-                          <p className="text-xs text-muted-foreground italic mb-2">
-                            {i + 1}. {pregunta.concepto}
-                          </p>
-                          
-                          {/* Pregunta principal en negrita */}
-                          <p className="font-semibold mb-3">{pregunta.pregunta}</p>
-                          
-                          <div className="space-y-2 mb-4">
-                            {pregunta.opciones.map((opcion, j) => (
-                              <div 
-                                key={j} 
-                                className={`p-2 rounded-lg text-sm flex items-center gap-2 ${
-                                  opcion.es_correcta 
-                                    ? 'bg-success/10 border border-success/30 text-success' 
-                                    : 'bg-muted/50 border border-muted'
-                                }`}
-                              >
-                                {opcion.es_correcta && <CheckCircle2 className="w-4 h-4" />}
-                                <span>{opcion.texto}</span>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="grid md:grid-cols-2 gap-3">
-                            <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                              <span className="text-xs font-medium text-success flex items-center gap-1 mb-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Feedback Acierto
-                              </span>
-                              <p className="text-sm text-success/80">{pregunta.feedback_acierto}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                              <span className="text-xs font-medium text-destructive flex items-center gap-1 mb-1">
-                                <Info className="w-3 h-3" />
-                                Feedback Error
-                              </span>
-                              <p className="text-sm text-destructive/80">{pregunta.feedback_error}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Step 4: Quiz POST */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              {/* Read-only mode banner for completed classes */}
-              {isClaseCompletada && (
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Lock className="w-5 h-5" />
-                    <span className="font-medium">Modo solo lectura - Esta clase está completada y no puede ser editada</span>
+                {guiaGenerada && (
+                  <div className="p-4 rounded-lg bg-success/10 border border-success/20 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
+                    <p className="font-medium text-success">Clase completada exitosamente</p>
+                    <p className="text-sm text-muted-foreground">Todos los componentes están completos</p>
                   </div>
-                </div>
-              )}
-              
-              {!quizPostData && (
-                <div className="text-center py-4">
-                  <ClipboardList className="w-12 h-12 text-success mx-auto mb-4" />
-                  <h2 className="text-lg font-semibold mb-2">Evaluación de Competencias (POST)</h2>
-                  <p className="text-muted-foreground mb-6">
-                    7 preguntas de situación y análisis • 15 minutos
-                  </p>
-                  <Button variant="gradient" size="lg" onClick={handleGenerarQuizPost} disabled={isGenerating || isClaseCompletada}>
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Generando...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5" />
-                        Generar Quiz POST
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {quizPostData && (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Metadata Header */}
-                  <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-emerald-700">
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span className="font-bold">{quizPostData.metadata.titulo_evaluacion}</span>
-                      </div>
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {quizPostData.metadata.tiempo_sugerido}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-emerald-600 mb-2">{quizPostData.metadata.proposito}</p>
-                    <Badge variant="outline" className="text-xs">
-                      Nivel: {quizPostData.metadata.nivel_taxonomico}
-                    </Badge>
-                  </div>
-
-                  {/* Questions - Clean layout */}
-                  <div className="space-y-4">
-                    {quizPostData.preguntas.map((pregunta, i) => (
-                      <div key={i} className="p-4 rounded-lg border bg-card">
-                        {/* Contexto situacional - cursiva y gris suave */}
-                        <p className="text-sm italic text-muted-foreground mb-2">
-                          {pregunta.contexto_situacional}
-                        </p>
-                        
-                        {/* Pregunta principal - negrita con número */}
-                        <p className="font-semibold mb-4">
-                          {pregunta.numero}. {pregunta.pregunta}
-                        </p>
-                        
-                        {/* Opciones */}
-                        <div className="space-y-2 mb-4">
-                          {pregunta.opciones.map((opcion, j) => (
-                            <div 
-                              key={j} 
-                              className={`p-2 rounded-lg text-sm flex items-center gap-2 ${
-                                opcion.es_correcta 
-                                  ? 'bg-success/10 border border-success/30 text-success' 
-                                  : 'bg-muted/50 border border-muted'
-                              }`}
-                            >
-                              <span className="w-5 h-5 rounded-full border flex items-center justify-center text-xs font-medium">
-                                {String.fromCharCode(65 + j)}
-                              </span>
-                              {opcion.es_correcta && <CheckCircle2 className="w-4 h-4" />}
-                              <span>{opcion.texto}</span>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Retroalimentación expandible */}
-                        <details className="group">
-                          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-1">
-                            <Info className="w-4 h-4" />
-                            Ver retroalimentación detallada
-                          </summary>
-                          <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                            <p className="text-sm text-amber-800">{pregunta.retroalimentacion_detallada}</p>
-                          </div>
-                        </details>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 5: Validate - Only show if class is not completed */}
-          {currentStep === 5 && !isClaseCompletada && (
-            <div className="space-y-6">
-              <div className="text-center py-4">
-                <FileCheck className="w-12 h-12 text-primary mx-auto mb-4" />
-                <h2 className="text-lg font-semibold mb-2">Validar y Finalizar</h2>
-                <p className="text-muted-foreground mb-6">
-                  Revisa que todos los componentes estén completos
-                </p>
+                )}
               </div>
+            )}
+          </CardContent>
+        </Card>
 
-              <div className="space-y-3">
-                {[
-                  { label: 'Contexto de la clase', completed: true },
-                  { label: 'Guía de clase generada', completed: !!guiaGenerada },
-                    { label: 'Quiz PRE (diagnóstico)', completed: !!quizPreData },
-                    { label: 'Quiz POST (evaluación)', completed: !!quizPostData }
-                ].map((item, i) => (
-                  <div key={i} className={`flex items-center gap-3 p-4 rounded-lg ${item.completed ? 'bg-success/10' : 'bg-muted'}`}>
-                    {item.completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-success" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />
-                    )}
-                    <span className={item.completed ? 'text-success font-medium' : 'text-muted-foreground'}>
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        {/* Navigation */}
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+            disabled={currentStep === 1}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Anterior
+          </Button>
 
-                {guiaGenerada && quizPreData && quizPostData && (
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 text-center">
-                  <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
-                  <p className="font-medium text-primary">¡Todo listo!</p>
-                  <p className="text-sm text-muted-foreground">Tu clase está preparada para ser impartida</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Show completion message if class is completed and on step 5 */}
-          {currentStep === 5 && isClaseCompletada && (
-            <div className="space-y-6">
-              <div className="text-center py-4">
-                <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-                <h2 className="text-lg font-semibold mb-2">Clase Completada</h2>
-                <p className="text-muted-foreground mb-6">
-                  Esta clase ya ha sido completada y validada
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  { label: 'Contexto de la clase', completed: true },
-                  { label: 'Guía de clase generada', completed: !!guiaGenerada },
-                    { label: 'Quiz PRE (diagnóstico)', completed: !!quizPreData },
-                    { label: 'Quiz POST (evaluación)', completed: !!quizPostData }
-                ].map((item, i) => (
-                  <div key={i} className={`flex items-center gap-3 p-4 rounded-lg ${item.completed ? 'bg-success/10' : 'bg-muted'}`}>
-                    {item.completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-success" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />
-                    )}
-                    <span className={item.completed ? 'text-success font-medium' : 'text-muted-foreground'}>
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {guiaGenerada && quizPreData && quizPostData && (
-                <div className="p-4 rounded-lg bg-success/10 border border-success/20 text-center">
-                  <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-                  <p className="font-medium text-success">Clase completada exitosamente</p>
-                  <p className="text-sm text-muted-foreground">Todos los componentes están completos</p>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-          disabled={currentStep === 1}
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Anterior
-        </Button>
-
-        {/* Determine max step based on completion status */}
-        {(() => {
-          const maxStep = isClaseCompletada ? 4 : 5;
-          
-          if (currentStep < maxStep) {
-            if (currentStep === 1) {
-              if (guiaGenerada) {
-                return (
-                  <Button 
-                    variant="gradient"
-                    onClick={() => setCurrentStep(2)}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Ver Guía
-                  </Button>
-                );
-              } else {
-                return (
-                  <Button 
-                    variant="gradient"
-                    onClick={generarEnParalelo ? handleGenerarTodoEnParalelo : handleGenerarGuia}
-                    disabled={!canProceed() || isGenerating || isClaseCompletada}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {generarEnParalelo ? 'Generando todo...' : 'Generando...'}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        {generarEnParalelo ? 'Generar Todo en Paralelo' : 'Generar Guía'}
-                      </>
-                    )}
-                  </Button>
-                );
-              }
-            } else {
-              return (
+          {currentStep < 3 ? (
+            currentStep === 1 ? (
+              guiaGenerada ? (
                 <Button 
                   variant="gradient"
-                  onClick={() => setCurrentStep(Math.min(maxStep, currentStep + 1))}
-                  disabled={!canProceed()}
+                  onClick={() => setCurrentStep(2)}
                 >
-                  Siguiente
-                  <ChevronRight className="w-4 h-4 ml-2" />
+                  <Eye className="w-4 h-4 mr-2" />
+                  Ver Guía
                 </Button>
-              );
-            }
-          } else {
-            // Step 5 - only show validate button if not completed
-            if (!isClaseCompletada) {
-              return (
+              ) : (
                 <Button 
                   variant="gradient"
-                  onClick={handleValidar}
-                  disabled={!guiaGenerada || !quizPreData || !quizPostData}
+                  onClick={handleGenerarGuia}
+                  disabled={!canProceed() || isGenerating || isClaseCompletada}
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Validar Clase
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generar Guía
+                    </>
+                  )}
                 </Button>
-              );
-            } else {
-              // If completed, just show a message or nothing
-              return null;
-            }
-          }
-        })()}
+              )
+            ) : (
+              <Button 
+                variant="gradient"
+                onClick={() => setCurrentStep(3)}
+                disabled={!canProceed()}
+              >
+                Siguiente
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            )
+          ) : (
+            !isClaseCompletada && (
+              <Button 
+                variant="gradient"
+                onClick={handleValidar}
+                disabled={!guiaGenerada}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Validar Clase
+              </Button>
+            )
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
   };
 
   // Main render

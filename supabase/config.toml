@@ -1,1 +1,16 @@
 project_id = "hzcorwgktaaxxiggzyby"
+
+[functions.generate-guia-clase]
+verify_jwt = true
+
+[functions.generate-quiz-pre]
+verify_jwt = true
+
+[functions.generate-quiz-post]
+verify_jwt = true
+
+[functions.generate-recomendaciones]
+verify_jwt = true
+
+[functions.generate-desempenos]
+verify_jwt = true
