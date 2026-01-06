@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Accordion,
   AccordionContent,
@@ -280,6 +281,23 @@ export default function Planificacion() {
           icon={Calendar}
         />
       </div>
+
+      {/* Selector de Cursos */}
+      {cursosConTemas.length > 0 && (
+        <Tabs value={selectedCurso || undefined} onValueChange={setSelectedCurso} className="w-full">
+          <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1">
+            {cursosConTemas.map((curso) => (
+              <TabsTrigger
+                key={curso.id}
+                value={curso.id}
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+              >
+                {curso.nombre} - {curso.grupo?.grado || 'Sin grupo'}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
       {/* Cursos content */}
       {selectedCurso && cursoActual && (() => {
