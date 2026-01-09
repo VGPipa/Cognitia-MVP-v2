@@ -211,18 +211,23 @@ export default function GenerarClase() {
     return Array.from(temasMap.values());
   }, [cursosConTemas]);
 
-  // Get all unique grupos from asignaciones for filter
+  // Get all unique grupos from asignaciones for filter - ORDENADOS por grado
   const gruposDisponibles = useMemo(() => {
-    const gruposMap = new Map<string, { id: string; nombre: string }>();
+    const gruposMap = new Map<string, { id: string; nombre: string; grado: string }>();
     
     grupos.forEach(grupo => {
       if (grupo && !gruposMap.has(grupo.id)) {
         const nombre = grupo.nombre || `${grupo.grado}° ${grupo.seccion || ''}`.trim();
-        gruposMap.set(grupo.id, { id: grupo.id, nombre });
+        gruposMap.set(grupo.id, { id: grupo.id, nombre, grado: grupo.grado });
       }
     });
     
-    return Array.from(gruposMap.values());
+    return Array.from(gruposMap.values())
+      .sort((a, b) => {
+        const numA = parseInt(a.grado?.match(/^(\d+)/)?.[1] || '0');
+        const numB = parseInt(b.grado?.match(/^(\d+)/)?.[1] || '0');
+        return numA - numB;
+      });
   }, [grupos]);
   
   // Load initial data based on URL params

@@ -80,14 +80,23 @@ export default function Planificacion() {
   });
   const { createOrUpdateGuiaTema, isLoading: isCreatingGuia } = useGuiasTema(profesorId, selectedTema?.id);
 
+  // Ordenar cursosConTemas por grado del grupo asociado
+  const cursosOrdenados = [...cursosConTemas].sort((a, b) => {
+    const grupoA = asignaciones.find(asig => asig.id_materia === a.id)?.grupo;
+    const grupoB = asignaciones.find(asig => asig.id_materia === b.id)?.grupo;
+    const numA = parseInt(grupoA?.grado?.match(/^(\d+)/)?.[1] || '0');
+    const numB = parseInt(grupoB?.grado?.match(/^(\d+)/)?.[1] || '0');
+    return numA - numB;
+  });
+
   // Set first curso as selected when data loads
   useEffect(() => {
-    if (!selectedCurso && cursosConTemas.length > 0) {
-      setSelectedCurso(cursosConTemas[0].id);
+    if (!selectedCurso && cursosOrdenados.length > 0) {
+      setSelectedCurso(cursosOrdenados[0].id);
     }
-  }, [cursosConTemas, selectedCurso]);
+  }, [cursosOrdenados, selectedCurso]);
 
-  const cursoActual = cursosConTemas.find(c => c.id === selectedCurso);
+  const cursoActual = cursosOrdenados.find(c => c.id === selectedCurso);
 
   const handleIniciarTema = (tema: { id: string; nombre: string; cursoId: string }) => {
     setSelectedTema(tema);
@@ -283,10 +292,10 @@ export default function Planificacion() {
       </div>
 
       {/* Selector de Cursos */}
-      {cursosConTemas.length > 0 && (
+      {cursosOrdenados.length > 0 && (
         <Tabs value={selectedCurso || undefined} onValueChange={setSelectedCurso} className="w-full">
           <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1">
-            {cursosConTemas.map((curso) => (
+            {cursosOrdenados.map((curso) => (
               <TabsTrigger
                 key={curso.id}
                 value={curso.id}
