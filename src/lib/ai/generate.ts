@@ -44,6 +44,12 @@ export interface GuiaClaseData {
   };
 }
 
+export interface CompetenciaConDesempenos {
+  competencia: string;
+  capacidades: string[];
+  desempenos: string[];
+}
+
 export interface GenerateGuiaClaseInput {
   tema: string;
   contexto: string;
@@ -54,10 +60,8 @@ export interface GenerateGuiaClaseInput {
   numeroEstudiantes?: number;
   duracion?: number;
   area?: string;
-  // CNEB fields
-  competencias?: string[];
-  capacidades?: string[];
-  desempeno?: string;
+  // CNEB fields - NEW STRUCTURE
+  competenciasConDesempenos?: CompetenciaConDesempenos[];
   enfoqueTransversal?: string;
   adaptaciones?: string[];
   adaptacionesPersonalizadas?: string;
@@ -230,9 +234,7 @@ export async function generateGuiaClase(
     numeroEstudiantes?: number;
     duracion?: number;
     area?: string;
-    competencias?: string[];
-    capacidades?: string[];
-    desempeno?: string;
+    competenciasConDesempenos?: CompetenciaConDesempenos[];
     enfoqueTransversal?: string;
     adaptaciones?: string[];
     adaptacionesPersonalizadas?: string;
@@ -251,9 +253,7 @@ export async function generateGuiaClase(
         numeroEstudiantes: opciones?.numeroEstudiantes,
         duracion: opciones?.duracion,
         area: opciones?.area,
-        competencias: opciones?.competencias,
-        capacidades: opciones?.capacidades,
-        desempeno: opciones?.desempeno,
+        competenciasConDesempenos: opciones?.competenciasConDesempenos,
         enfoqueTransversal: opciones?.enfoqueTransversal,
         adaptaciones: opciones?.adaptaciones,
         adaptacionesPersonalizadas: opciones?.adaptacionesPersonalizadas,

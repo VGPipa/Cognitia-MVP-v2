@@ -38,13 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    const { tema, nivel, grado, area, competencias, capacidades } = await req.json();
+    // Updated to accept single competencia instead of array
+    const { tema, nivel, grado, area, competencia, capacidades } = await req.json();
 
-    console.log('Generating desempeños for:', { tema, nivel, grado, area, competencias, capacidades });
+    console.log('Generating desempeños for:', { tema, nivel, grado, area, competencia, capacidades });
 
-    if (!tema || !competencias?.length || !capacidades?.length) {
+    if (!tema || !competencia || !capacidades?.length) {
       return new Response(
-        JSON.stringify({ error: 'Se requiere tema, competencias y capacidades' }),
+        JSON.stringify({ error: 'Se requiere tema, competencia y capacidades' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -61,13 +62,13 @@ NIVEL: ${nivel}
 GRADO: ${grado}°
 ÁREA CURRICULAR: ${area}
 
-COMPETENCIAS SELECCIONADAS:
-${competencias.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}
+COMPETENCIA:
+${competencia}
 
 CAPACIDADES SELECCIONADAS:
 ${capacidades.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}
 
-Genera desempeños específicos, observables y medibles que el estudiante debe lograr al finalizar la sesión.`;
+Genera 2-3 desempeños específicos, observables y medibles que el estudiante debe lograr al finalizar la sesión, basados en esta competencia y sus capacidades.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
