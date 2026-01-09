@@ -9,23 +9,28 @@ const corsHeaders = {
 const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia, una IA experta en diseñar sesiones de aprendizaje para escuelas peruanas alineadas al Currículo Nacional (CNEB). Tu objetivo es generar una GUÍA DE CLASE en formato JSON estricto siguiendo la estructura oficial del MINEDU.
 
 ### INSTRUCCIONES CRÍTICAS:
-1. DEBES usar EXACTAMENTE las competencias, capacidades y desempeño que se te proporcionan
+1. DEBES usar EXACTAMENTE las competencias, capacidades y desempeños que se te proporcionan
 2. La salida debe ser ÚNICAMENTE un objeto JSON válido
 3. No incluyas texto antes ni después del JSON
 4. Si falta información, infiere lo más adecuado para el contexto peruano
+5. IMPORTANTE: Los criterios_evaluacion deben ser un ARRAY de desempeños específicos por competencia
 
 ### ESTRUCTURA DEL JSON (SCHEMA OBLIGATORIO):
 {
   "datos_generales": {
     "titulo_sesion": "String creativo y descriptivo",
     "nivel": "String (Primaria/Secundaria)",
-    "grado": "String",
-    "area_academica": "String"
+    "grado": "String (ej: 4to Secundaria)",
+    "area_academica": "String",
+    "duracion": "String (ej: 90 minutos)"
   },
   "propositos_aprendizaje": [
     {
       "competencia": "String (USAR la competencia proporcionada)",
-      "criterios_evaluacion": "String (desempeños específicos observables)",
+      "criterios_evaluacion": [
+        "String - Desempeño 1 observable y medible para esta competencia",
+        "String - Desempeño 2 observable y medible para esta competencia"
+      ],
       "evidencia_aprendizaje": "String (producto o actuación que demuestra el aprendizaje)",
       "instrumento_valoracion": "String (Rúbrica, Lista de cotejo, etc.)"
     }
@@ -127,14 +132,6 @@ serve(async (req) => {
     console.log("Materiales:", materiales);
 
     // Build the user prompt with all available data
-    const competenciasText = competencias && competencias.length > 0 
-      ? competencias.join('\n- ') 
-      : '[INFERIR según el área y tema]';
-    
-    const capacidadesText = capacidades && capacidades.length > 0 
-      ? capacidades.join('\n- ') 
-      : '[INFERIR según las competencias]';
-
     const adaptacionesText = adaptaciones && adaptaciones.length > 0
       ? adaptaciones.join(', ')
       : 'Ninguna especificada';
@@ -142,6 +139,21 @@ serve(async (req) => {
     const materialesText = materiales && materiales.length > 0
       ? materiales.join(', ')
       : recursos?.length > 0 ? recursos.join(', ') : '[Recursos básicos de aula]';
+
+    // Build competencias section with associated capacidades for structured output
+    let competenciasSection = '';
+    if (competencias && competencias.length > 0) {
+      competenciasSection = competencias.map((comp, index) => {
+        return `${index + 1}. Competencia: "${comp}"
+   - Generar 2-3 desempeños específicos, observables y medibles para esta competencia`;
+      }).join('\n');
+    } else {
+      competenciasSection = '[INFERIR competencias según el área y tema]';
+    }
+
+    const capacidadesText = capacidades && capacidades.length > 0 
+      ? capacidades.join('\n- ') 
+      : '[INFERIR según las competencias]';
 
     const userPrompt = `
 DATOS DE LA SESIÓN:
@@ -153,14 +165,15 @@ DATOS DE LA SESIÓN:
 - Número de estudiantes: ${numeroEstudiantes || '[NO PROPORCIONADO]'}
 - Duración de la clase: ${duracion || 55} minutos
 
-PROPÓSITOS DE APRENDIZAJE (USAR EXACTAMENTE):
-Competencias:
-- ${competenciasText}
+PROPÓSITOS DE APRENDIZAJE:
 
-Capacidades:
+COMPETENCIAS (generar criterios_evaluacion como ARRAY de desempeños para cada una):
+${competenciasSection}
+
+CAPACIDADES asociadas:
 - ${capacidadesText}
 
-Desempeño esperado: ${desempeno || '[INFERIR un desempeño apropiado para el grado y tema]'}
+Desempeño base proporcionado (usar como referencia): ${desempeno || '[GENERAR desempeños apropiados para el grado y tema]'}
 
 Enfoque transversal: ${enfoqueTransversal || '[INFERIR el más apropiado]'}
 
@@ -175,9 +188,10 @@ CONTEXTO DEL GRUPO:
 ${contexto || '[Usar contexto general para adolescentes peruanos]'}
 
 Genera la guía de clase completa en formato JSON según el schema especificado. Asegúrate de:
-1. Usar EXACTAMENTE las competencias y capacidades proporcionadas
-2. Generar actividades diferenciadas para cada tipo de adaptación indicada
-3. Incluir estrategias específicas de diferenciación en las actividades`;
+1. Usar EXACTAMENTE las competencias proporcionadas
+2. Para cada competencia, generar criterios_evaluacion como un ARRAY de 2-3 desempeños específicos
+3. Incluir el campo "duracion" en datos_generales (ej: "90 minutos")
+4. Generar actividades diferenciadas para cada tipo de adaptación indicada`;
 
     console.log("User prompt built, calling Lovable AI...");
 
@@ -249,17 +263,26 @@ Genera la guía de clase completa en formato JSON según el schema especificado.
     }
 
     // Ensure required fields exist with defaults based on new schema
+    // Normalize propositos_aprendizaje to ensure criterios_evaluacion is always an array
+    const normalizedPropositos = (guiaData.propositos_aprendizaje || []).map((p: any) => ({
+      ...p,
+      criterios_evaluacion: Array.isArray(p.criterios_evaluacion) 
+        ? p.criterios_evaluacion 
+        : [p.criterios_evaluacion || desempeno || "Desempeño por definir"]
+    }));
+
     const guiaClase = {
-      datos_generales: guiaData.datos_generales || {
-        titulo_sesion: `Sesión: ${tema}`,
-        nivel: nivel || "Secundaria",
-        grado: grado || "[INFERIDO]",
-        area_academica: area || "[NO ESPECIFICADA]"
+      datos_generales: {
+        titulo_sesion: guiaData.datos_generales?.titulo_sesion || `Sesión: ${tema}`,
+        nivel: guiaData.datos_generales?.nivel || nivel || "Secundaria",
+        grado: guiaData.datos_generales?.grado || grado || "[INFERIDO]",
+        area_academica: guiaData.datos_generales?.area_academica || area || "[NO ESPECIFICADA]",
+        duracion: guiaData.datos_generales?.duracion || `${duracion || 55} minutos`
       },
-      propositos_aprendizaje: guiaData.propositos_aprendizaje || [
+      propositos_aprendizaje: normalizedPropositos.length > 0 ? normalizedPropositos : [
         {
           competencia: competencias?.[0] || "[POR DEFINIR]",
-          criterios_evaluacion: desempeno || "[POR DEFINIR]",
+          criterios_evaluacion: [desempeno || "Desempeño por definir"],
           evidencia_aprendizaje: "Producto o actuación observable",
           instrumento_valoracion: "Lista de cotejo"
         }

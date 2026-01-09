@@ -1432,45 +1432,73 @@ export default function GenerarClase() {
                       </div>
                     </div>
 
-                    {/* Datos Generales Header */}
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
-                      <h3 className="text-lg font-bold text-primary mb-1">{guiaGenerada.datos_generales.titulo_sesion}</h3>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <GraduationCap className="w-3 h-3" />
-                          {guiaGenerada.datos_generales.nivel} - {guiaGenerada.datos_generales.grado}
-                        </Badge>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <BookOpen className="w-3 h-3" />
-                          {guiaGenerada.datos_generales.area_academica}
-                        </Badge>
+                    {/* I. DATOS GENERALES - Rediseño MINEDU */}
+                    <div className="border-2 border-amber-600 rounded-lg overflow-hidden">
+                      <div className="bg-amber-600 text-white px-4 py-2 font-bold">
+                        I. DATOS GENERALES
+                      </div>
+                      <div className="p-4 bg-amber-50/30">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-xs font-medium text-muted-foreground">TÍTULO DE LA SESIÓN</span>
+                            <p className="font-semibold text-lg">{guiaGenerada.datos_generales.titulo_sesion}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-medium text-muted-foreground">ÁREA</span>
+                            <p className="font-medium">{guiaGenerada.datos_generales.area_academica}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-medium text-muted-foreground">GRADO Y SECCIÓN</span>
+                            <p className="font-medium">{guiaGenerada.datos_generales.nivel} - {guiaGenerada.datos_generales.grado}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-medium text-muted-foreground">DURACIÓN</span>
+                            <p className="font-medium">{guiaGenerada.datos_generales.duracion || `${formData.duracion} minutos`}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Propósitos de Aprendizaje - Table */}
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold flex items-center gap-2 mb-3">
-                        <Target className="w-4 h-4 text-primary" />
-                        Propósitos de Aprendizaje
-                      </h4>
+                    {/* II. PROPÓSITOS DE APRENDIZAJE - Nueva tabla estilizada */}
+                    <div className="border-2 border-teal-600 rounded-lg overflow-hidden">
+                      <div className="bg-teal-600 text-white px-4 py-2 font-bold">
+                        II. PROPÓSITOS DE APRENDIZAJE
+                      </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="text-left p-2 font-medium">Competencia</th>
-                              <th className="text-left p-2 font-medium">Criterios de Evaluación</th>
-                              <th className="text-left p-2 font-medium">Evidencia</th>
-                              <th className="text-left p-2 font-medium">Instrumento</th>
+                            <tr className="bg-teal-100 text-teal-800">
+                              <th className="text-left p-3 font-semibold border-r border-teal-200">COMPETENCIA / CAPACIDADES</th>
+                              <th className="text-left p-3 font-semibold border-r border-teal-200">CRITERIOS DE EVALUACIÓN (DESEMPEÑOS)</th>
+                              <th className="text-left p-3 font-semibold border-r border-teal-200">EVIDENCIA DE APRENDIZAJE</th>
+                              <th className="text-left p-3 font-semibold">INSTRUMENTO DE VALORACIÓN</th>
                             </tr>
                           </thead>
                           <tbody>
                             {guiaGenerada.propositos_aprendizaje.map((prop, i) => (
-                              <tr key={i} className="border-b">
-                                <td className="p-2">{prop.competencia}</td>
-                                <td className="p-2">{prop.criterios_evaluacion}</td>
-                                <td className="p-2">{prop.evidencia_aprendizaje}</td>
-                                <td className="p-2">
-                                  <Badge variant="secondary">{prop.instrumento_valoracion}</Badge>
+                              <tr key={i} className="border-t border-teal-200 hover:bg-teal-50/50">
+                                <td className="p-3 border-r border-teal-200 align-top">
+                                  <p className="font-medium text-teal-700">{prop.competencia}</p>
+                                </td>
+                                <td className="p-3 border-r border-teal-200 align-top">
+                                  {Array.isArray(prop.criterios_evaluacion) ? (
+                                    <ul className="space-y-2">
+                                      {prop.criterios_evaluacion.map((criterio, j) => (
+                                        <li key={j} className="flex gap-2">
+                                          <span className="text-teal-600 font-bold">•</span>
+                                          <span>{criterio}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p>{prop.criterios_evaluacion}</p>
+                                  )}
+                                </td>
+                                <td className="p-3 border-r border-teal-200 align-top">{prop.evidencia_aprendizaje}</td>
+                                <td className="p-3 align-top">
+                                  <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-300">
+                                    {prop.instrumento_valoracion}
+                                  </Badge>
                                 </td>
                               </tr>
                             ))}
@@ -1479,74 +1507,98 @@ export default function GenerarClase() {
                       </div>
                     </div>
 
-                    {/* Enfoques Transversales */}
-                    <div className="p-4 rounded-lg border bg-card">
-                      <h4 className="font-semibold flex items-center gap-2 mb-3">
-                        <Heart className="w-4 h-4 text-rose-500" />
-                        Enfoques Transversales
-                      </h4>
-                      <div className="flex flex-wrap gap-3">
-                        {guiaGenerada.enfoques_transversales.map((enfoque, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-rose-50/50 border border-rose-200">
-                            <span className="font-medium text-rose-700">{enfoque.nombre}</span>
-                            <p className="text-sm text-muted-foreground mt-1">{enfoque.descripcion}</p>
-                          </div>
-                        ))}
+                    {/* ENFOQUES TRANSVERSALES - Tabla separada */}
+                    <div className="border-2 border-emerald-600 rounded-lg overflow-hidden">
+                      <div className="bg-emerald-600 text-white px-4 py-2 font-bold">
+                        ENFOQUES TRANSVERSALES
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-emerald-100 text-emerald-800">
+                              <th className="text-left p-3 font-semibold border-r border-emerald-200 w-1/3">ENFOQUES TRANSVERSALES</th>
+                              <th className="text-left p-3 font-semibold">ACCIONES OBSERVABLES</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {guiaGenerada.enfoques_transversales.map((enfoque, i) => (
+                              <tr key={i} className="border-t border-emerald-200 hover:bg-emerald-50/50">
+                                <td className="p-3 border-r border-emerald-200 font-medium text-emerald-700">{enfoque.nombre}</td>
+                                <td className="p-3">{enfoque.descripcion}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
 
-                    {/* Preparación */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-lg border bg-card">
-                        <h4 className="font-semibold mb-3">¿Qué necesitamos hacer antes de la sesión?</h4>
-                        <p className="text-sm text-muted-foreground">{guiaGenerada.preparacion.antes_sesion}</p>
+                    {/* III. PREPARACIÓN DE LA SESIÓN - Layout 2 columnas */}
+                    <div className="border-2 border-sky-600 rounded-lg overflow-hidden">
+                      <div className="bg-sky-600 text-white px-4 py-2 font-bold">
+                        III. PREPARACIÓN DE LA SESIÓN
                       </div>
-                      <div className="p-4 rounded-lg border bg-card">
-                        <h4 className="font-semibold mb-3">Materiales</h4>
-                        <ul className="space-y-1">
-                          {guiaGenerada.preparacion.materiales.map((mat, i) => (
-                            <li key={i} className="text-sm flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                              {mat}
-                            </li>
-                          ))}
-                        </ul>
+                      <div className="grid md:grid-cols-2 divide-x divide-sky-200">
+                        <div className="p-4">
+                          <h4 className="font-semibold text-sky-700 mb-3">¿Qué necesitamos hacer antes de la sesión?</h4>
+                          <p className="text-sm leading-relaxed">{guiaGenerada.preparacion.antes_sesion}</p>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="font-semibold text-sky-700 mb-3">¿Qué recursos o materiales se utilizarán?</h4>
+                          <ul className="space-y-2">
+                            {guiaGenerada.preparacion.materiales.map((mat, i) => (
+                              <li key={i} className="text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                                {mat}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Momentos de la Sesión */}
-                    <div>
-                      <h4 className="font-semibold mb-4 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-primary" />
-                        Momentos de la Sesión
-                      </h4>
-                      <div className="space-y-4">
+                    {/* IV. MOMENTOS DE LA SESIÓN - Cards con colores y tiempo */}
+                    <div className="border-2 border-purple-600 rounded-lg overflow-hidden">
+                      <div className="bg-purple-600 text-white px-4 py-2 font-bold">
+                        IV. MOMENTOS DE LA SESIÓN
+                      </div>
+                      <div className="p-4 space-y-4">
                         {guiaGenerada.momentos_sesion.map((fase, i) => {
-                          const faseColors: Record<string, string> = {
-                            INICIO: 'border-l-amber-500 bg-amber-50/50',
-                            DESARROLLO: 'border-l-blue-500 bg-blue-50/50',
-                            CIERRE: 'border-l-green-500 bg-green-50/50'
+                          const faseStyles: Record<string, { border: string; bg: string; title: string; badge: string }> = {
+                            INICIO: { 
+                              border: 'border-l-amber-500', 
+                              bg: 'bg-amber-50', 
+                              title: 'text-amber-700',
+                              badge: 'bg-amber-100 text-amber-700 border-amber-300'
+                            },
+                            DESARROLLO: { 
+                              border: 'border-l-blue-500', 
+                              bg: 'bg-blue-50', 
+                              title: 'text-blue-700',
+                              badge: 'bg-blue-100 text-blue-700 border-blue-300'
+                            },
+                            CIERRE: { 
+                              border: 'border-l-green-500', 
+                              bg: 'bg-green-50', 
+                              title: 'text-green-700',
+                              badge: 'bg-green-100 text-green-700 border-green-300'
+                            }
                           };
-                          const faseTextColors: Record<string, string> = {
-                            INICIO: 'text-amber-700',
-                            DESARROLLO: 'text-blue-700',
-                            CIERRE: 'text-green-700'
-                          };
+                          const style = faseStyles[fase.fase] || faseStyles.INICIO;
                           return (
                             <div 
                               key={i} 
-                              className={`p-4 rounded-lg border-l-4 ${faseColors[fase.fase] || 'border-l-gray-500 bg-gray-50/50'}`}
+                              className={`p-4 rounded-lg border-l-4 ${style.border} ${style.bg}`}
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className={`font-bold ${faseTextColors[fase.fase] || 'text-gray-700'}`}>
+                              <div className="flex items-center justify-between mb-3">
+                                <span className={`font-bold text-lg ${style.title}`}>
                                   {fase.fase}
                                 </span>
-                                <Badge variant="secondary" className="flex items-center gap-1">
+                                <Badge variant="outline" className={`flex items-center gap-1 ${style.badge}`}>
                                   <Clock className="w-3 h-3" />
                                   {fase.duracion}
                                 </Badge>
                               </div>
-                              <p className="text-sm whitespace-pre-wrap">{fase.actividades}</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{fase.actividades}</p>
                             </div>
                           );
                         })}
@@ -1555,12 +1607,14 @@ export default function GenerarClase() {
 
                     {/* Adaptaciones Sugeridas */}
                     {guiaGenerada.adaptaciones_sugeridas && (
-                      <div className="p-4 rounded-lg border bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4 text-purple-600" />
-                          Adaptaciones Sugeridas
-                        </h4>
-                        <p className="text-sm">{guiaGenerada.adaptaciones_sugeridas.estrategias_diferenciadas}</p>
+                      <div className="border-2 border-rose-400 rounded-lg overflow-hidden">
+                        <div className="bg-rose-500 text-white px-4 py-2 font-bold flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4" />
+                          ADAPTACIONES SUGERIDAS (NEE)
+                        </div>
+                        <div className="p-4 bg-rose-50/30">
+                          <p className="text-sm leading-relaxed">{guiaGenerada.adaptaciones_sugeridas.estrategias_diferenciadas}</p>
+                        </div>
                       </div>
                     )}
                   </div>
