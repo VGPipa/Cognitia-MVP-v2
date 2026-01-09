@@ -116,15 +116,15 @@ export default function GenerarClase() {
   // Check if class is completed (read-only mode)
   const isClaseCompletada = claseData?.estado === 'completada';
   
-  // Form state
+  // Form state - now with desempeños per competencia
   const [formData, setFormData] = useState({
     fecha: '',
     duracion: 55,
     areaAcademica: '' as string,
-    // Propósitos de aprendizaje
+    // Propósitos de aprendizaje - NUEVA ESTRUCTURA
     competencias: [] as string[],
-    capacidades: [] as string[],
-    desempeno: '' as string,
+    capacidadesPorCompetencia: {} as Record<string, string[]>,  // { competenciaId: [capacidadIds] }
+    desempenosPorCompetencia: {} as Record<string, string[]>,   // { competenciaId: [desempeños] }
     enfoqueTransversal: '' as string,
     // Materiales
     materiales: [] as string[],
@@ -136,6 +136,9 @@ export default function GenerarClase() {
     contexto: '',
     temaPersonalizado: ''
   });
+  
+  // State for tracking which competencia is generating desempeños
+  const [generatingForCompetencia, setGeneratingForCompetencia] = useState<string | null>(null);
 
   // CNEB Data hooks
   const { areas } = useAreasCurriculares();
@@ -458,8 +461,8 @@ export default function GenerarClase() {
       duracion: 55,
       areaAcademica: '',
       competencias: [],
-      capacidades: [],
-      desempeno: '',
+      capacidadesPorCompetencia: {},
+      desempenosPorCompetencia: {},
       enfoqueTransversal: '',
       materiales: [],
       materialOtro: '',
@@ -527,26 +530,26 @@ export default function GenerarClase() {
     return nuevaClase;
   };
 
-  // Handler: Generate desempeño with AI
-  const handleGenerarDesempeno = async () => {
-    if (formData.competencias.length === 0 || formData.capacidades.length === 0) {
+  // Handler: Generate desempeños for a specific competencia
+  const handleGenerarDesempenoParaCompetencia = async (competenciaId: string) => {
+    const capacidadesDeCompetencia = formData.capacidadesPorCompetencia[competenciaId] || [];
+    
+    if (capacidadesDeCompetencia.length === 0) {
       toast({
         title: 'Selección requerida',
-        description: 'Selecciona al menos una competencia y una capacidad',
+        description: 'Selecciona al menos una capacidad para esta competencia',
         variant: 'destructive'
       });
       return;
     }
 
-    setIsGeneratingDesempeno(true);
+    setGeneratingForCompetencia(competenciaId);
     
     try {
       const temaNombre = formData.temaPersonalizado || temaData?.nombre || '';
       const areaName = areas.find(a => a.id === formData.areaAcademica)?.nombre || '';
-      const competenciasNames = formData.competencias
-        .map(id => competenciasCNEB.find(c => c.id === id)?.nombre)
-        .filter(Boolean);
-      const capacidadesNames = formData.capacidades
+      const competenciaData = competenciasCNEB.find(c => c.id === competenciaId);
+      const capacidadesNames = capacidadesDeCompetencia
         .map(id => capacidadesCNEB.find(c => c.id === id)?.nombre)
         .filter(Boolean);
 
@@ -556,7 +559,7 @@ export default function GenerarClase() {
           nivel: gradoInfo?.nivel || 'Secundaria',
           grado: gradoInfo?.gradoNum || '3',
           area: areaName,
-          competencias: competenciasNames,
+          competencia: competenciaData?.nombre || '',
           capacidades: capacidadesNames
         }
       });
@@ -564,25 +567,132 @@ export default function GenerarClase() {
       if (response.error) throw response.error;
 
       const data = response.data;
+      const desempenos = data.desempenos || [data.desempenoUnificado || ''];
+      
       setFormData(prev => ({
         ...prev,
-        desempeno: data.desempenoUnificado || data.desempenos?.join(' ')
+        desempenosPorCompetencia: {
+          ...prev.desempenosPorCompetencia,
+          [competenciaId]: desempenos
+        }
       }));
 
       toast({
-        title: 'Desempeño generado',
-        description: 'Puedes editar el texto si lo deseas'
+        title: 'Desempeños generados',
+        description: `Se generaron ${desempenos.length} desempeño(s) para esta competencia`
       });
     } catch (error: any) {
       console.error('Error generating desempeno:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo generar el desempeño. Intenta de nuevo.',
+        description: 'No se pudo generar los desempeños. Intenta de nuevo.',
         variant: 'destructive'
       });
     } finally {
-      setIsGeneratingDesempeno(false);
+      setGeneratingForCompetencia(null);
     }
+  };
+
+  // Helper to get all capacidades for a specific competencia
+  const getCapacidadesForCompetencia = (competenciaId: string) => {
+    return capacidadesCNEB.filter(cap => cap.id_competencia === competenciaId);
+  };
+
+  // Toggle capacidad for a specific competencia
+  const toggleCapacidadForCompetencia = (competenciaId: string, capacidadId: string) => {
+    if (isClaseCompletada) return;
+    
+    setFormData(prev => {
+      const currentCaps = prev.capacidadesPorCompetencia[competenciaId] || [];
+      const newCaps = currentCaps.includes(capacidadId)
+        ? currentCaps.filter(id => id !== capacidadId)
+        : [...currentCaps, capacidadId];
+      
+      return {
+        ...prev,
+        capacidadesPorCompetencia: {
+          ...prev.capacidadesPorCompetencia,
+          [competenciaId]: newCaps
+        }
+      };
+    });
+  };
+
+  // Update desempeño text for a competencia
+  const updateDesempenoForCompetencia = (competenciaId: string, index: number, value: string) => {
+    setFormData(prev => {
+      const currentDesempenos = [...(prev.desempenosPorCompetencia[competenciaId] || [])];
+      currentDesempenos[index] = value;
+      return {
+        ...prev,
+        desempenosPorCompetencia: {
+          ...prev.desempenosPorCompetencia,
+          [competenciaId]: currentDesempenos
+        }
+      };
+    });
+  };
+
+  // Add new desempeño for a competencia
+  const addDesempenoForCompetencia = (competenciaId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      desempenosPorCompetencia: {
+        ...prev.desempenosPorCompetencia,
+        [competenciaId]: [...(prev.desempenosPorCompetencia[competenciaId] || []), '']
+      }
+    }));
+  };
+
+  // Remove desempeño from a competencia
+  const removeDesempenoFromCompetencia = (competenciaId: string, index: number) => {
+    setFormData(prev => {
+      const currentDesempenos = [...(prev.desempenosPorCompetencia[competenciaId] || [])];
+      currentDesempenos.splice(index, 1);
+      return {
+        ...prev,
+        desempenosPorCompetencia: {
+          ...prev.desempenosPorCompetencia,
+          [competenciaId]: currentDesempenos
+        }
+      };
+    });
+  };
+
+  // Toggle competencia selection
+  const toggleCompetencia = (competenciaId: string) => {
+    if (isClaseCompletada) return;
+    
+    setFormData(prev => {
+      const isSelected = prev.competencias.includes(competenciaId);
+      
+      if (isSelected) {
+        // Remove competencia and its capacidades/desempeños
+        const { [competenciaId]: removedCaps, ...restCaps } = prev.capacidadesPorCompetencia;
+        const { [competenciaId]: removedDesempenos, ...restDesempenos } = prev.desempenosPorCompetencia;
+        
+        return {
+          ...prev,
+          competencias: prev.competencias.filter(id => id !== competenciaId),
+          capacidadesPorCompetencia: restCaps,
+          desempenosPorCompetencia: restDesempenos
+        };
+      } else {
+        // Add competencia
+        return {
+          ...prev,
+          competencias: [...prev.competencias, competenciaId],
+          capacidadesPorCompetencia: {
+            ...prev.capacidadesPorCompetencia,
+            [competenciaId]: []
+          },
+          desempenosPorCompetencia: {
+            ...prev.desempenosPorCompetencia,
+            [competenciaId]: []
+          }
+        };
+      }
+    });
   };
 
   const handleGenerarGuia = async () => {
@@ -627,9 +737,17 @@ export default function GenerarClase() {
           numeroEstudiantes: grupoData?.cantidad_alumnos,
           duracion: formData.duracion,
           area: cursoData?.nombre || areas.find(a => a.id === formData.areaAcademica)?.nombre,
-          competencias: formData.competencias.map(id => competenciasCNEB.find(c => c.id === id)?.nombre || ''),
-          capacidades: formData.capacidades.map(id => capacidadesCNEB.find(c => c.id === id)?.nombre || ''),
-          desempeno: formData.desempeno,
+        competenciasConDesempenos: formData.competencias.map(compId => {
+            const comp = competenciasCNEB.find(c => c.id === compId);
+            const capsIds = formData.capacidadesPorCompetencia[compId] || [];
+            const capsNames = capsIds.map(capId => capacidadesCNEB.find(c => c.id === capId)?.nombre || '').filter(Boolean);
+            const desempenos = formData.desempenosPorCompetencia[compId] || [];
+            return {
+              competencia: comp?.nombre || '',
+              capacidades: capsNames,
+              desempenos: desempenos.filter(d => d.trim() !== '')
+            };
+          }),
           enfoqueTransversal: enfoques.find(e => e.id === formData.enfoqueTransversal)?.nombre,
           adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
           adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
@@ -710,8 +828,17 @@ export default function GenerarClase() {
     if (!formData.fecha) missing.push('Fecha programada');
     if (!formData.areaAcademica) missing.push('Área Académica');
     if (formData.competencias.length === 0) missing.push('Al menos una Competencia');
-    if (formData.capacidades.length === 0) missing.push('Al menos una Capacidad');
-    if (!formData.desempeno.trim()) missing.push('Desempeño esperado');
+    
+    // Check that each competencia has at least one capacidad and one desempeño
+    const competenciasConCapacidades = formData.competencias.filter(
+      compId => (formData.capacidadesPorCompetencia[compId] || []).length > 0
+    );
+    if (competenciasConCapacidades.length === 0) missing.push('Al menos una Capacidad por Competencia');
+    
+    const competenciasConDesempenos = formData.competencias.filter(
+      compId => (formData.desempenosPorCompetencia[compId] || []).some(d => d.trim() !== '')
+    );
+    if (competenciasConDesempenos.length === 0) missing.push('Al menos un Desempeño por Competencia');
     if (!formData.enfoqueTransversal) missing.push('Enfoque Transversal');
     if (formData.materiales.length === 0) missing.push('Al menos un Material');
     
@@ -1142,7 +1269,7 @@ export default function GenerarClase() {
                     <Label>Área Académica *</Label>
                     <Select 
                       value={formData.areaAcademica} 
-                      onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidades: []})}
+                      onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidadesPorCompetencia: {}, desempenosPorCompetencia: {}})}
                       disabled={isClaseCompletada}
                     >
                       <SelectTrigger>
@@ -1157,132 +1284,171 @@ export default function GenerarClase() {
                   </div>
                 </fieldset>
 
-                {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE */}
+                {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE - NUEVO DISEÑO POR COMPETENCIA */}
                 <fieldset className="p-4 border rounded-lg space-y-4">
                   <legend className="text-lg font-semibold px-2 flex items-center gap-2">
                     <Target className="w-5 h-5 text-primary" />
                     Propósitos de Aprendizaje
                   </legend>
                   
-                  <div className="grid gap-4">
-                    {/* Competencias */}
-                    <div className="space-y-2">
-                      <Label>Competencias * (selección múltiple)</Label>
-                      <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                        {formData.areaAcademica ? (
-                          competenciasCNEB.map(comp => (
-                            <Badge
-                              key={comp.id}
-                              variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
-                              className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                              onClick={() => {
-                                if (!isClaseCompletada) {
-                                  const newComps = formData.competencias.includes(comp.id)
-                                    ? formData.competencias.filter(c => c !== comp.id)
-                                    : [...formData.competencias, comp.id];
-                                  setFormData({...formData, competencias: newComps, capacidades: []});
-                                }
-                              }}
-                            >
-                              {comp.nombre}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Capacidades */}
-                    <div className="space-y-2">
-                      <Label>Capacidades * (selección múltiple)</Label>
-                      <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                        {formData.competencias.length > 0 ? (
-                          capacidadesCNEB.map(cap => (
-                            <Badge
-                              key={cap.id}
-                              variant={formData.capacidades.includes(cap.id) ? 'default' : 'outline'}
-                              className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                              onClick={() => {
-                                if (!isClaseCompletada) {
-                                  const newCaps = formData.capacidades.includes(cap.id)
-                                    ? formData.capacidades.filter(c => c !== cap.id)
-                                    : [...formData.capacidades, cap.id];
-                                  setFormData({...formData, capacidades: newCaps});
-                                }
-                              }}
-                            >
-                              {cap.nombre}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Primero selecciona competencias</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Desempeño con botón IA */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Desempeño esperado *</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleGenerarDesempeno}
-                          disabled={
-                            formData.competencias.length === 0 || 
-                            formData.capacidades.length === 0 || 
-                            isGeneratingDesempeno ||
-                            isClaseCompletada
-                          }
-                          className="gap-2"
-                        >
-                          {isGeneratingDesempeno ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Generando...
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="w-4 h-4" />
-                              Generar con IA
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <Textarea 
-                        placeholder="Describe el desempeño o usa el botón para generarlo automáticamente..."
-                        value={formData.desempeno}
-                        onChange={(e) => setFormData({...formData, desempeno: e.target.value})}
-                        rows={3}
-                        disabled={isClaseCompletada}
-                      />
-                      {formData.competencias.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Selecciona competencias y capacidades para habilitar la generación automática
-                        </p>
+                  {/* Selección de Competencias */}
+                  <div className="space-y-2">
+                    <Label>Competencias * (selección múltiple)</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                      {formData.areaAcademica ? (
+                        competenciasCNEB.map(comp => (
+                          <Badge
+                            key={comp.id}
+                            variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
+                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                            onClick={() => toggleCompetencia(comp.id)}
+                          >
+                            {comp.nombre}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
                       )}
                     </div>
+                  </div>
 
-                    {/* Enfoque Transversal */}
-                    <div className="space-y-2">
-                      <Label>Enfoque Transversal *</Label>
-                      <Select 
-                        value={formData.enfoqueTransversal} 
-                        onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
-                        disabled={isClaseCompletada}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un enfoque" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {enfoques.map(enfoque => (
-                            <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {/* Secciones expandidas por competencia seleccionada */}
+                  {formData.competencias.length > 0 && (
+                    <div className="space-y-4">
+                      {formData.competencias.map(compId => {
+                        const comp = competenciasCNEB.find(c => c.id === compId);
+                        const capsForComp = getCapacidadesForCompetencia(compId);
+                        const selectedCaps = formData.capacidadesPorCompetencia[compId] || [];
+                        const desempenos = formData.desempenosPorCompetencia[compId] || [];
+                        const isGenerating = generatingForCompetencia === compId;
+                        
+                        return (
+                          <div key={compId} className="border rounded-lg p-4 bg-muted/20 space-y-4">
+                            {/* Header de competencia */}
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-primary flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4" />
+                                {comp?.nombre}
+                              </h4>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenerarDesempenoParaCompetencia(compId)}
+                                disabled={selectedCaps.length === 0 || isGenerating || isClaseCompletada}
+                                className="gap-2"
+                              >
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Generando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 className="w-4 h-4" />
+                                    Generar Desempeños
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {/* Capacidades de esta competencia */}
+                            <div className="space-y-2">
+                              <Label className="text-sm">Capacidades *</Label>
+                              <div className="flex flex-wrap gap-2 p-2 border rounded bg-background min-h-[40px]">
+                                {capsForComp.length > 0 ? (
+                                  capsForComp.map(cap => (
+                                    <Badge
+                                      key={cap.id}
+                                      variant={selectedCaps.includes(cap.id) ? 'default' : 'outline'}
+                                      className={isClaseCompletada ? "cursor-not-allowed text-xs" : "cursor-pointer text-xs"}
+                                      onClick={() => toggleCapacidadForCompetencia(compId, cap.id)}
+                                    >
+                                      {cap.nombre}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No hay capacidades disponibles</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Desempeños de esta competencia */}
+                            <div className="space-y-2">
+                              <Label className="text-sm">Desempeños *</Label>
+                              {desempenos.length > 0 ? (
+                                <div className="space-y-2">
+                                  {desempenos.map((desemp, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                      <span className="text-primary font-bold mt-2">•</span>
+                                      <Textarea
+                                        value={desemp}
+                                        onChange={(e) => updateDesempenoForCompetencia(compId, idx, e.target.value)}
+                                        placeholder="Describe el desempeño..."
+                                        rows={2}
+                                        disabled={isClaseCompletada}
+                                        className="flex-1"
+                                      />
+                                      {!isClaseCompletada && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => removeDesempenoFromCompetencia(compId, idx)}
+                                          className="text-destructive hover:text-destructive h-8 w-8 mt-1"
+                                        >
+                                          ×
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                                  Selecciona capacidades y usa "Generar Desempeños" o agrega manualmente
+                                </p>
+                              )}
+                              {!isClaseCompletada && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => addDesempenoForCompetencia(compId)}
+                                  className="text-primary text-xs"
+                                >
+                                  + Agregar desempeño
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
+                  )}
+
+                  {formData.competencias.length === 0 && (
+                    <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg text-center">
+                      Selecciona competencias arriba para configurar capacidades y desempeños
+                    </p>
+                  )}
+
+                  {/* Enfoque Transversal */}
+                  <div className="space-y-2">
+                    <Label>Enfoque Transversal *</Label>
+                    <Select 
+                      value={formData.enfoqueTransversal} 
+                      onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
+                      disabled={isClaseCompletada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un enfoque" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {enfoques.map(enfoque => (
+                          <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </fieldset>
 
