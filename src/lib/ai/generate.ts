@@ -18,10 +18,11 @@ export interface GuiaClaseData {
     nivel: string;
     grado: string;
     area_academica: string;
+    duracion: string; // NEW: "90 minutos"
   };
   propositos_aprendizaje: Array<{
     competencia: string;
-    criterios_evaluacion: string;
+    criterios_evaluacion: string[]; // CHANGED: Array de desempeños por competencia
     evidencia_aprendizaje: string;
     instrumento_valoracion: string;
   }>;
