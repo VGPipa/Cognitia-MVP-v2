@@ -58,14 +58,19 @@ export function useAsignaciones(anioEscolar?: string) {
     enabled: !!profesorId,
   });
 
-  // Helper: Get unique groups
+  // Helper: Get unique groups - ORDENADOS por grado
   const grupos = asignaciones
     .map(a => a.grupo)
     .filter((g, index, self) => 
       g && index === self.findIndex(gr => gr?.id === g.id)
-    ) as Asignacion['grupo'][];
+    )
+    .sort((a, b) => {
+      const numA = parseInt(a?.grado?.match(/^(\d+)/)?.[1] || '0');
+      const numB = parseInt(b?.grado?.match(/^(\d+)/)?.[1] || '0');
+      return numA - numB;
+    }) as Asignacion['grupo'][];
 
-  // Helper: Get unique cursos (estandarizado)
+  // Helper: Get unique cursos (estandarizado) - ORDENADOS por grado del grupo asociado
   const cursos = asignaciones
     .map(a => a.curso)
     .filter((c, index, self) => 
