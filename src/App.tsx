@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Loader2 } from "lucide-react";
-import PoetaInteractivo from "./pages/profesor/PoetaInteractivo";
 
 // Pages
 import Auth from "./pages/Auth";
@@ -109,7 +108,6 @@ function AppRoutes() {
         <Route path="/admin/configuracion" element={<Configuracion />} />
         
         {/* Profesor routes */}
-        <Route path="/profesor/poeta" element={<PoetaInteractivo />} /> {/* <-- NUEVA RUTA */}
         <Route path="/profesor/dashboard" element={<ProfesorDashboard />} />
         <Route path="/profesor/planificacion" element={<Planificacion />} />
         <Route path="/profesor/planificacion/tema/:temaId" element={<TemaDetalle />} />
