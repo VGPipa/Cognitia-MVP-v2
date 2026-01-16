@@ -1,5 +1,5 @@
 import { BookOpen, Sparkles, FileCheck } from 'lucide-react';
-import type { WizardStep, MaterialDisponible, DuracionOption } from './types';
+import type { WizardStep, MaterialDisponible, HoraPedagogicaOption } from './types';
 
 // Wizard steps - simplified to 3 steps
 export const STEPS: WizardStep[] = [
@@ -16,11 +16,13 @@ export const MATERIALES_DISPONIBLES: MaterialDisponible[] = [
   { id: 'celular', nombre: 'Computador / Celular' }
 ];
 
-export const DURACIONES: DuracionOption[] = [
-  { value: 45, label: '45 minutos' },
-  { value: 55, label: '55 minutos' },
-  { value: 60, label: '60 minutos' },
-  { value: 90, label: '90 minutos' }
+// Horas pedagógicas (1 hora = 45 minutos)
+export const HORAS_PEDAGOGICAS: HoraPedagogicaOption[] = [
+  { horas: 1, minutos: 45 },
+  { horas: 2, minutos: 90 },
+  { horas: 3, minutos: 135 },
+  { horas: 4, minutos: 180 },
+  { horas: 5, minutos: 225 }
 ];
 
 // LocalStorage keys
