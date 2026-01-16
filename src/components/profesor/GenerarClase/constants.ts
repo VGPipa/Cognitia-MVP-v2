@@ -30,6 +30,7 @@ export const AUTOSAVE_INTERVAL = 30000; // 30 seconds
 export const STORAGE_KEYS = {
   DRAFT_FORM: 'generar_clase_draft_form',
   DRAFT_TIMESTAMP: 'generar_clase_draft_timestamp',
+  DRAFT_DISMISSED: 'generar_clase_draft_dismissed',
   LAST_AREA: 'generar_clase_last_area',
   LAST_MATERIALES: 'generar_clase_last_materiales'
 };
