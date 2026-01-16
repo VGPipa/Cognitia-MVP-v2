@@ -22,6 +22,7 @@ export interface GuiaClaseData {
   };
   propositos_aprendizaje: Array<{
     competencia: string;
+    capacidades?: string[]; // NEW: Array de capacidades por competencia
     criterios_evaluacion: string[]; // CHANGED: Array de desempeños por competencia
     evidencia_aprendizaje: string;
     instrumento_valoracion: string;

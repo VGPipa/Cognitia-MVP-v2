@@ -25,6 +25,7 @@ const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia. Genera GUÍ
   },
   "propositos_aprendizaje": [{
     "competencia": "String (USAR la proporcionada)",
+    "capacidades": ["Capacidad 1", "Capacidad 2"],
     "criterios_evaluacion": ["Desempeño 1", "Desempeño 2"],
     "evidencia_aprendizaje": "String breve",
     "instrumento_valoracion": "Rúbrica/Lista de cotejo"
@@ -299,25 +300,31 @@ INSTRUCCIONES CRÍTICAS:
       throw new Error("La respuesta de la IA no es un JSON válido. Por favor, intenta de nuevo.");
     }
 
-    // Ensure required fields exist with defaults based on new schema
-    // Normalize propositos_aprendizaje to ensure criterios_evaluacion is always an array
-    const normalizedPropositos = (guiaData.propositos_aprendizaje || []).map((p: any) => ({
-      ...p,
-      criterios_evaluacion: Array.isArray(p.criterios_evaluacion) 
-        ? p.criterios_evaluacion 
-        : [p.criterios_evaluacion || "Desempeño por definir"]
-    }));
+    // Normalize propositos_aprendizaje to ensure criterios_evaluacion and capacidades are arrays
+    const normalizedPropositos = (guiaData.propositos_aprendizaje || []).map((p: any, index: number) => {
+      // Get capacidades from the original input if available
+      const inputCapacidades = competenciasConDesempenos?.[index]?.capacidades || [];
+      return {
+        ...p,
+        capacidades: Array.isArray(p.capacidades) ? p.capacidades : inputCapacidades,
+        criterios_evaluacion: Array.isArray(p.criterios_evaluacion) 
+          ? p.criterios_evaluacion 
+          : [p.criterios_evaluacion || "Desempeño por definir"]
+      };
+    });
 
     // Build default propositos from competenciasConDesempenos if AI didn't return any
     const defaultPropositos = competenciasConDesempenos && competenciasConDesempenos.length > 0
       ? competenciasConDesempenos.map(item => ({
           competencia: item.competencia,
+          capacidades: item.capacidades || [],
           criterios_evaluacion: item.desempenos.length > 0 ? item.desempenos : ["Desempeño por definir"],
           evidencia_aprendizaje: "Producto o actuación observable",
           instrumento_valoracion: "Lista de cotejo"
         }))
       : [{
           competencia: "[POR DEFINIR]",
+          capacidades: [],
           criterios_evaluacion: ["Desempeño por definir"],
           evidencia_aprendizaje: "Producto o actuación observable",
           instrumento_valoracion: "Lista de cotejo"

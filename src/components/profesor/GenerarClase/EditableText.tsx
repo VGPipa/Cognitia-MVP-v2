@@ -1,12 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Pencil } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface EditableTextProps {
   value: string;
@@ -15,6 +8,7 @@ interface EditableTextProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  sectionEditing?: boolean;
 }
 
 export function EditableText({
@@ -23,7 +17,8 @@ export function EditableText({
   multiline = false,
   disabled = false,
   className,
-  placeholder = 'Haz clic para editar...'
+  placeholder = 'Haz clic para editar...',
+  sectionEditing = false
 }: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value);
@@ -108,6 +103,7 @@ export function EditableText({
     );
   }
 
+  // If not editable, just show plain text
   if (!isEditable) {
     return (
       <span className={cn("inline-block", !value && "text-muted-foreground italic", className)}>
@@ -116,29 +112,29 @@ export function EditableText({
     );
   }
 
+  // Section editing mode: show editable styling when section is being edited
+  if (sectionEditing) {
+    return (
+      <span
+        onClick={handleClick}
+        className={cn(
+          "inline-flex items-center transition-all rounded-md px-2 py-0.5 -mx-1",
+          "border border-dashed border-amber-400 bg-amber-50/50 dark:bg-amber-950/30",
+          "hover:bg-amber-100 dark:hover:bg-amber-900/40",
+          "cursor-pointer",
+          !value && "text-muted-foreground italic",
+          className
+        )}
+      >
+        <span className="flex-1">{value || placeholder}</span>
+      </span>
+    );
+  }
+
+  // Default: plain text (no border, no pencil icon)
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            onClick={handleClick}
-            className={cn(
-              "inline-flex items-center gap-1.5 transition-all rounded-md px-2 py-0.5 -mx-1",
-              "border border-dashed border-slate-300 dark:border-slate-600",
-              "hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400",
-              "cursor-pointer group",
-              !value && "text-muted-foreground italic",
-              className
-            )}
-          >
-            <span className="flex-1">{value || placeholder}</span>
-            <Pencil className="w-3 h-3 text-amber-600 opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          Haz clic para editar
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <span className={cn("inline-block", !value && "text-muted-foreground italic", className)}>
+      {value || placeholder}
+    </span>
   );
 }

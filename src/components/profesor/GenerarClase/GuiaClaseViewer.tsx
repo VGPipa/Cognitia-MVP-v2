@@ -14,8 +14,9 @@ import {
   ChevronDown,
   FileType,
   HelpCircle,
-  Sparkles,
-  HeartHandshake
+  HeartHandshake,
+  Pencil,
+  Sparkles
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,6 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, HeadingLevel, TextRun } from 'docx';
+import { saveAs } from 'file-saver';
 import type { GuiaClaseData } from '@/lib/ai/generate';
 import { EditableText } from './EditableText';
 
@@ -42,6 +45,14 @@ export function GuiaClaseViewer({
   readOnly = false 
 }: GuiaClaseViewerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [editingSections, setEditingSections] = useState<Record<string, boolean>>({});
+
+  const toggleSectionEdit = (section: string) => {
+    setEditingSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   const handleExportPDF = useCallback(async () => {
     if (!contentRef.current) return;
@@ -75,43 +86,325 @@ export function GuiaClaseViewer({
     }
   }, [guia.datos_generales.titulo_sesion]);
 
-  const handleExportWord = useCallback(() => {
-    if (!contentRef.current) return;
-    
+  const handleExportWord = useCallback(async () => {
     try {
-      const html = contentRef.current.innerHTML;
-      const filename = `guia-${guia.datos_generales.titulo_sesion.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50)}.doc`;
+      const filename = `guia-${guia.datos_generales.titulo_sesion.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50)}.docx`;
       
-      const blob = new Blob([`
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-              xmlns:w='urn:schemas-microsoft-com:office:word'
-              xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta charset='utf-8'>
-          <title>Guía de Clase</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 12pt; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background-color: #f0f0f0; }
-          </style>
-        </head>
-        <body>${html}</body>
-        </html>
-      `], { type: 'application/msword' });
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const tableBorders = {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+      };
+
+      // Build document sections
+      const children: (Paragraph | Table)[] = [];
+
+      // Title
+      children.push(
+        new Paragraph({
+          text: guia.datos_generales.titulo_sesion,
+          heading: HeadingLevel.HEADING_1,
+          spacing: { after: 200 },
+        })
+      );
+
+      // I. DATOS GENERALES
+      children.push(
+        new Paragraph({
+          text: "I. DATOS GENERALES",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        })
+      );
+
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Área", bold: true })] })], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph(guia.datos_generales.area_academica)], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Grado", bold: true })] })], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph(`${guia.datos_generales.nivel} - ${guia.datos_generales.grado}`)], borders: tableBorders }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Duración", bold: true })] })], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph(guia.datos_generales.duracion || `${duracion} minutos`)], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Título", bold: true })] })], borders: tableBorders }),
+                new TableCell({ children: [new Paragraph(guia.datos_generales.titulo_sesion)], borders: tableBorders }),
+              ],
+            }),
+          ],
+        })
+      );
+
+      // II. PROPÓSITOS DE APRENDIZAJE
+      children.push(
+        new Paragraph({
+          text: "II. PROPÓSITOS DE APRENDIZAJE",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        })
+      );
+
+      guia.propositos_aprendizaje.forEach((prop) => {
+        // Competencia header
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: prop.competencia, bold: true })],
+            shading: { fill: "E0F2FE" },
+            spacing: { before: 200, after: 100 },
+          })
+        );
+
+        const capacidadesText = prop.capacidades?.join('\n• ') || '';
+        const desempenosText = prop.criterios_evaluacion?.join('\n• ') || '';
+
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({ 
+                    children: [new Paragraph({ children: [new TextRun({ text: "Capacidades", bold: true })] })], 
+                    borders: tableBorders,
+                    shading: { fill: "F1F5F9" },
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                  }),
+                  new TableCell({ 
+                    children: [new Paragraph({ children: [new TextRun({ text: "Desempeños", bold: true })] })], 
+                    borders: tableBorders,
+                    shading: { fill: "F1F5F9" },
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                  }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ 
+                    children: [new Paragraph(capacidadesText ? `• ${capacidadesText}` : '-')], 
+                    borders: tableBorders,
+                  }),
+                  new TableCell({ 
+                    children: [new Paragraph(desempenosText ? `• ${desempenosText}` : '-')], 
+                    borders: tableBorders,
+                  }),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ 
+                    children: [
+                      new Paragraph({ children: [new TextRun({ text: "Evidencia de Aprendizaje: ", bold: true }), new TextRun(prop.evidencia_aprendizaje)] }),
+                    ], 
+                    borders: tableBorders,
+                  }),
+                  new TableCell({ 
+                    children: [
+                      new Paragraph({ children: [new TextRun({ text: "Instrumento de valoración: ", bold: true }), new TextRun(prop.instrumento_valoracion)] }),
+                    ], 
+                    borders: tableBorders,
+                  }),
+                ],
+              }),
+            ],
+          })
+        );
+      });
+
+      // ENFOQUES TRANSVERSALES
+      children.push(
+        new Paragraph({
+          text: "ENFOQUES TRANSVERSALES",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        })
+      );
+
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ 
+                  children: [new Paragraph({ children: [new TextRun({ text: "Enfoque", bold: true })] })], 
+                  borders: tableBorders,
+                  shading: { fill: "F1F5F9" },
+                  width: { size: 30, type: WidthType.PERCENTAGE },
+                }),
+                new TableCell({ 
+                  children: [new Paragraph({ children: [new TextRun({ text: "Acciones Observables", bold: true })] })], 
+                  borders: tableBorders,
+                  shading: { fill: "F1F5F9" },
+                }),
+              ],
+            }),
+            ...guia.enfoques_transversales.map((enfoque) => 
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph(enfoque.nombre)], borders: tableBorders }),
+                  new TableCell({ children: [new Paragraph(enfoque.descripcion)], borders: tableBorders }),
+                ],
+              })
+            ),
+          ],
+        })
+      );
+
+      // III. PREPARACIÓN DE LA SESIÓN
+      children.push(
+        new Paragraph({
+          text: "III. PREPARACIÓN DE LA SESIÓN",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        })
+      );
+
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({ 
+                  children: [new Paragraph({ children: [new TextRun({ text: "¿Qué necesitamos hacer antes de la sesión?", bold: true })] })], 
+                  borders: tableBorders,
+                  shading: { fill: "F1F5F9" },
+                }),
+                new TableCell({ 
+                  children: [new Paragraph({ children: [new TextRun({ text: "¿Qué recursos o materiales se utilizarán?", bold: true })] })], 
+                  borders: tableBorders,
+                  shading: { fill: "F1F5F9" },
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph(guia.preparacion.antes_sesion)], borders: tableBorders }),
+                new TableCell({ 
+                  children: [new Paragraph(`• ${guia.preparacion.materiales.join('\n• ')}`)], 
+                  borders: tableBorders,
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+
+      // IV. MOMENTOS DE LA SESIÓN
+      children.push(
+        new Paragraph({
+          text: "IV. MOMENTOS DE LA SESIÓN",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        })
+      );
+
+      guia.momentos_sesion.forEach((fase) => {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${fase.fase} `, bold: true }),
+              new TextRun({ text: `(${fase.duracion})`, italics: true }),
+            ],
+            spacing: { before: 200, after: 100 },
+            shading: { 
+              fill: fase.fase === 'INICIO' ? 'FEF3C7' : fase.fase === 'DESARROLLO' ? 'DBEAFE' : 'D1FAE5' 
+            },
+          })
+        );
+
+        const hasDetailedStructure = 'objetivo_fase' in fase || 'actividades_docente' in fase;
+        
+        if (hasDetailedStructure) {
+          if ((fase as any).objetivo_fase) {
+            children.push(
+              new Paragraph({
+                children: [
+                  new TextRun({ text: "Objetivo: ", bold: true }),
+                  new TextRun((fase as any).objetivo_fase),
+                ],
+                spacing: { after: 100 },
+              })
+            );
+          }
+          
+          if ((fase as any).actividades_docente?.length > 0) {
+            children.push(
+              new Paragraph({
+                children: [new TextRun({ text: "Actividades del Docente:", bold: true })],
+                spacing: { before: 100 },
+              })
+            );
+            children.push(
+              new Paragraph({
+                text: `• ${((fase as any).actividades_docente as string[]).join('\n• ')}`,
+                spacing: { after: 100 },
+              })
+            );
+          }
+          
+          if ((fase as any).actividades_estudiante?.length > 0) {
+            children.push(
+              new Paragraph({
+                children: [new TextRun({ text: "Actividades del Estudiante:", bold: true })],
+                spacing: { before: 100 },
+              })
+            );
+            children.push(
+              new Paragraph({
+                text: `• ${((fase as any).actividades_estudiante as string[]).join('\n• ')}`,
+                spacing: { after: 100 },
+              })
+            );
+          }
+        } else {
+          children.push(
+            new Paragraph({
+              text: fase.actividades,
+              spacing: { after: 100 },
+            })
+          );
+        }
+      });
+
+      // Adaptaciones
+      if (guia.adaptaciones_sugeridas?.estrategias_diferenciadas) {
+        children.push(
+          new Paragraph({
+            text: "V. ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 300, after: 200 },
+          })
+        );
+
+        children.push(
+          new Paragraph({
+            text: guia.adaptaciones_sugeridas.estrategias_diferenciadas,
+            spacing: { after: 100 },
+          })
+        );
+      }
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children,
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, filename);
     } catch (error) {
       console.error('Error exporting Word:', error);
     }
-  }, [guia.datos_generales.titulo_sesion]);
+  }, [guia, duracion]);
 
   // Helper to update nested guia data
   const updateGuia = useCallback((path: (string | number)[], value: any) => {
@@ -163,21 +456,25 @@ export function GuiaClaseViewer({
         </div>
       </div>
 
-      {/* Edit mode indicator */}
-      {canEdit && (
-        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
-          <Sparkles className="w-4 h-4" />
-          <span>Modo edición activo: Haz clic en los campos con borde punteado para editarlos</span>
-        </div>
-      )}
-
       {/* Main Content for PDF Export */}
       <div ref={contentRef} className="space-y-6 bg-background print:bg-white">
         {/* I. DATOS GENERALES */}
         <section className="border border-border rounded-lg overflow-hidden">
-          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="font-semibold text-sm tracking-wide">I. DATOS GENERALES</span>
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="font-semibold text-sm tracking-wide">I. DATOS GENERALES</span>
+            </div>
+            {canEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => toggleSectionEdit('datos_generales')}
+                className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['datos_generales'] ? 'bg-white/20' : ''}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </header>
           <div className="p-5 bg-card">
             <div className="grid md:grid-cols-2 gap-6">
@@ -190,6 +487,7 @@ export function GuiaClaseViewer({
                     value={guia.datos_generales.titulo_sesion}
                     onChange={canEdit ? (v) => updateGuia(['datos_generales', 'titulo_sesion'], v) : undefined}
                     disabled={!canEdit}
+                    sectionEditing={editingSections['datos_generales']}
                   />
                 </p>
               </div>
@@ -215,84 +513,131 @@ export function GuiaClaseViewer({
           </div>
         </section>
 
-        {/* II. PROPÓSITOS DE APRENDIZAJE */}
+        {/* II. PROPÓSITOS DE APRENDIZAJE - New MINEDU structure */}
         <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-teal-400">
-          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            <span className="font-semibold text-sm tracking-wide">II. PROPÓSITOS DE APRENDIZAJE</span>
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              <span className="font-semibold text-sm tracking-wide">II. PROPÓSITOS DE APRENDIZAJE</span>
+            </div>
+            {canEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => toggleSectionEdit('propositos')}
+                className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['propositos'] ? 'bg-white/20' : ''}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </header>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-100 dark:bg-slate-800/50">
-                  <th className="text-left p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
-                    Competencia / Capacidades
-                  </th>
-                  <th className="text-left p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
-                    Criterios de Evaluación
-                  </th>
-                  <th className="text-left p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
-                    Evidencia
-                  </th>
-                  <th className="text-left p-3 font-semibold text-slate-700 dark:text-slate-300">
-                    Instrumento
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {guia.propositos_aprendizaje.map((prop, i) => (
-                  <tr key={i} className="border-t border-border hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                    <td className="p-3 border-r border-border align-top">
-                      <p className="font-medium text-foreground">{prop.competencia}</p>
-                    </td>
-                    <td className="p-3 border-r border-border align-top">
-                      {Array.isArray(prop.criterios_evaluacion) ? (
-                        <ul className="space-y-2">
-                          {prop.criterios_evaluacion.map((criterio, j) => (
-                            <li key={j} className="flex gap-2">
-                              <span className="text-teal-600 font-bold shrink-0">•</span>
-                              <EditableText
-                                value={criterio}
-                                onChange={canEdit ? (v) => {
-                                  const newCriterios = [...prop.criterios_evaluacion];
-                                  newCriterios[j] = v;
-                                  updateGuia(['propositos_aprendizaje', i, 'criterios_evaluacion'], newCriterios);
-                                } : undefined}
-                                disabled={!canEdit}
-                                multiline
-                              />
-                            </li>
-                          ))}
-                        </ul>
+          <div className="divide-y divide-border">
+            {guia.propositos_aprendizaje.map((prop, i) => (
+              <div key={i} className="bg-card">
+                {/* Table Header */}
+                <div className="grid grid-cols-2 bg-slate-100 dark:bg-slate-800/50 text-sm">
+                  <div className="p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
+                    COMPETENCIAS / CAPACIDADES
+                  </div>
+                  <div className="p-3 font-semibold text-slate-700 dark:text-slate-300">
+                    DESEMPEÑOS
+                  </div>
+                </div>
+                
+                {/* Competencia as transversal bar */}
+                <div className="p-3 bg-sky-100 dark:bg-sky-950/30 font-medium text-sm border-t border-border">
+                  {prop.competencia}
+                </div>
+                
+                {/* Capacidades left, Desempeños right */}
+                <div className="grid grid-cols-2 border-t border-border">
+                  <div className="p-3 border-r border-border">
+                    <ul className="space-y-2">
+                      {prop.capacidades && prop.capacidades.length > 0 ? (
+                        prop.capacidades.map((cap, j) => (
+                          <li key={j} className="flex gap-2 text-sm">
+                            <span className="text-teal-600 font-bold shrink-0">•</span>
+                            <span className="font-medium">{cap}</span>
+                          </li>
+                        ))
                       ) : (
-                        <p>{prop.criterios_evaluacion}</p>
+                        <li className="text-sm text-muted-foreground italic">Sin capacidades definidas</li>
                       )}
-                    </td>
-                    <td className="p-3 border-r border-border align-top">
+                    </ul>
+                  </div>
+                  <div className="p-3">
+                    <ul className="space-y-2">
+                      {Array.isArray(prop.criterios_evaluacion) ? (
+                        prop.criterios_evaluacion.map((criterio, j) => (
+                          <li key={j} className="flex gap-2 text-sm">
+                            <span className="text-teal-600 font-bold shrink-0">•</span>
+                            <EditableText
+                              value={criterio}
+                              onChange={canEdit ? (v) => {
+                                const newCriterios = [...prop.criterios_evaluacion];
+                                newCriterios[j] = v;
+                                updateGuia(['propositos_aprendizaje', i, 'criterios_evaluacion'], newCriterios);
+                              } : undefined}
+                              disabled={!canEdit}
+                              sectionEditing={editingSections['propositos']}
+                              multiline
+                            />
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-sm">{prop.criterios_evaluacion}</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+                
+                {/* Evidencia e Instrumento row */}
+                <div className="grid grid-cols-2 border-t border-border bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="p-3 border-r border-border">
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold block mb-1">
+                      Evidencia de Aprendizaje
+                    </span>
+                    <div className="text-sm">
                       <EditableText
                         value={prop.evidencia_aprendizaje}
                         onChange={canEdit ? (v) => updateGuia(['propositos_aprendizaje', i, 'evidencia_aprendizaje'], v) : undefined}
                         disabled={!canEdit}
+                        sectionEditing={editingSections['propositos']}
                         multiline
                       />
-                    </td>
-                    <td className="p-3 align-top">
-                      <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800">
-                        {prop.instrumento_valoracion}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold block mb-1">
+                      Instrumento de valoración
+                    </span>
+                    <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800">
+                      {prop.instrumento_valoracion}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* ENFOQUES TRANSVERSALES */}
         <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-indigo-400">
-          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-            <Compass className="w-4 h-4" />
-            <span className="font-semibold text-sm tracking-wide">ENFOQUES TRANSVERSALES</span>
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4" />
+              <span className="font-semibold text-sm tracking-wide">ENFOQUES TRANSVERSALES</span>
+            </div>
+            {canEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => toggleSectionEdit('enfoques')}
+                className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['enfoques'] ? 'bg-white/20' : ''}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </header>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -315,6 +660,7 @@ export function GuiaClaseViewer({
                         value={enfoque.descripcion}
                         onChange={canEdit ? (v) => updateGuia(['enfoques_transversales', i, 'descripcion'], v) : undefined}
                         disabled={!canEdit}
+                        sectionEditing={editingSections['enfoques']}
                         multiline
                       />
                     </td>
@@ -327,9 +673,21 @@ export function GuiaClaseViewer({
 
         {/* III. PREPARACIÓN DE LA SESIÓN */}
         <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-sky-400">
-          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            <span className="font-semibold text-sm tracking-wide">III. PREPARACIÓN DE LA SESIÓN</span>
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              <span className="font-semibold text-sm tracking-wide">III. PREPARACIÓN DE LA SESIÓN</span>
+            </div>
+            {canEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => toggleSectionEdit('preparacion')}
+                className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['preparacion'] ? 'bg-white/20' : ''}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </header>
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
             <div className="p-5">
@@ -341,6 +699,7 @@ export function GuiaClaseViewer({
                   value={guia.preparacion.antes_sesion}
                   onChange={canEdit ? (v) => updateGuia(['preparacion', 'antes_sesion'], v) : undefined}
                   disabled={!canEdit}
+                  sectionEditing={editingSections['preparacion']}
                   multiline
                 />
               </div>
@@ -361,6 +720,7 @@ export function GuiaClaseViewer({
                         updateGuia(['preparacion', 'materiales'], newMateriales);
                       } : undefined}
                       disabled={!canEdit}
+                      sectionEditing={editingSections['preparacion']}
                     />
                   </li>
                 ))}
@@ -371,9 +731,21 @@ export function GuiaClaseViewer({
 
         {/* IV. MOMENTOS DE LA SESIÓN */}
         <section className="border border-border rounded-lg overflow-hidden">
-          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <span className="font-semibold text-sm tracking-wide">IV. MOMENTOS DE LA SESIÓN</span>
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span className="font-semibold text-sm tracking-wide">IV. MOMENTOS DE LA SESIÓN</span>
+            </div>
+            {canEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => toggleSectionEdit('momentos')}
+                className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['momentos'] ? 'bg-white/20' : ''}`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </header>
           <div className="p-5 space-y-4">
             {guia.momentos_sesion.map((fase, i) => {
@@ -435,6 +807,7 @@ export function GuiaClaseViewer({
                                 value={(fase as any).objetivo_fase}
                                 onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'objetivo_fase'], v) : undefined}
                                 disabled={!canEdit}
+                                sectionEditing={editingSections['momentos']}
                                 multiline
                               />
                             </div>
@@ -460,6 +833,7 @@ export function GuiaClaseViewer({
                                       updateGuia(['momentos_sesion', i, 'actividades_docente'], newActs);
                                     } : undefined}
                                     disabled={!canEdit}
+                                    sectionEditing={editingSections['momentos']}
                                     multiline
                                   />
                                 </li>
@@ -487,6 +861,7 @@ export function GuiaClaseViewer({
                                       updateGuia(['momentos_sesion', i, 'actividades_estudiante'], newActs);
                                     } : undefined}
                                     disabled={!canEdit}
+                                    sectionEditing={editingSections['momentos']}
                                     multiline
                                   />
                                 </li>
@@ -502,6 +877,7 @@ export function GuiaClaseViewer({
                           value={fase.actividades}
                           onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'actividades'], v) : undefined}
                           disabled={!canEdit}
+                          sectionEditing={editingSections['momentos']}
                           multiline
                         />
                       </div>
@@ -516,9 +892,21 @@ export function GuiaClaseViewer({
         {/* Adaptaciones y Diferenciación Pedagógica */}
         {guia.adaptaciones_sugeridas && (guia.adaptaciones_sugeridas.estrategias_diferenciadas || guia.adaptaciones_sugeridas.apoyo_adicional) && (
           <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-rose-400">
-            <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4" />
-              <span className="font-semibold text-sm tracking-wide">ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA</span>
+            <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                <span className="font-semibold text-sm tracking-wide">ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA</span>
+              </div>
+              {canEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => toggleSectionEdit('adaptaciones')}
+                  className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['adaptaciones'] ? 'bg-white/20' : ''}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </header>
             <div className="p-5 space-y-5">
               {/* Main strategies (legacy field) */}
@@ -528,6 +916,7 @@ export function GuiaClaseViewer({
                     value={guia.adaptaciones_sugeridas.estrategias_diferenciadas}
                     onChange={canEdit ? (v) => updateGuia(['adaptaciones_sugeridas', 'estrategias_diferenciadas'], v) : undefined}
                     disabled={!canEdit}
+                    sectionEditing={editingSections['adaptaciones']}
                     multiline
                   />
                 </div>
@@ -556,6 +945,7 @@ export function GuiaClaseViewer({
                               updateGuia(['adaptaciones_sugeridas', 'apoyo_adicional'], newItems);
                             } : undefined}
                             disabled={!canEdit}
+                            sectionEditing={editingSections['adaptaciones']}
                             multiline
                           />
                         </li>
@@ -585,6 +975,7 @@ export function GuiaClaseViewer({
                               updateGuia(['adaptaciones_sugeridas', 'extension_avanzados'], newItems);
                             } : undefined}
                             disabled={!canEdit}
+                            sectionEditing={editingSections['adaptaciones']}
                             multiline
                           />
                         </li>
@@ -614,6 +1005,7 @@ export function GuiaClaseViewer({
                               updateGuia(['adaptaciones_sugeridas', 'recursos_apoyo'], newItems);
                             } : undefined}
                             disabled={!canEdit}
+                            sectionEditing={editingSections['adaptaciones']}
                             multiline
                           />
                         </li>
