@@ -37,7 +37,10 @@ export interface GuiaClaseData {
   momentos_sesion: Array<{
     fase: 'INICIO' | 'DESARROLLO' | 'CIERRE';
     duracion: string;
-    actividades: string;
+    actividades: string; // Legacy fallback
+    objetivo_fase?: string;
+    actividades_docente?: string[];
+    actividades_estudiante?: string[];
   }>;
   adaptaciones_sugeridas?: {
     estrategias_diferenciadas: string;

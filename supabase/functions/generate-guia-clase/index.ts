@@ -49,17 +49,46 @@ const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia, una IA expe
     {
       "fase": "INICIO",
       "duracion": "String (ej: 15 min)",
-      "actividades": "String (descripción detallada paso a paso de las actividades, incluyendo preguntas socráticas y dinámicas de motivación)"
+      "actividades": "String resumen (para compatibilidad)",
+      "objetivo_fase": "String (qué se busca lograr en esta fase)",
+      "actividades_docente": [
+        "String - Acción específica del docente 1",
+        "String - Acción específica del docente 2"
+      ],
+      "actividades_estudiante": [
+        "String - Acción específica del estudiante 1",
+        "String - Acción específica del estudiante 2"
+      ]
     },
     {
       "fase": "DESARROLLO",
       "duracion": "String (ej: 60 min)",
-      "actividades": "String (descripción detallada de actividades principales, trabajo individual/grupal, rol del docente)"
+      "actividades": "String resumen (para compatibilidad)",
+      "objetivo_fase": "String (qué se busca lograr en esta fase)",
+      "actividades_docente": [
+        "String - Acción específica del docente 1",
+        "String - Acción específica del docente 2",
+        "String - Acción específica del docente 3"
+      ],
+      "actividades_estudiante": [
+        "String - Acción específica del estudiante 1",
+        "String - Acción específica del estudiante 2",
+        "String - Acción específica del estudiante 3"
+      ]
     },
     {
       "fase": "CIERRE",
       "duracion": "String (ej: 15 min)",
-      "actividades": "String (metacognición, reflexión, extensión para casa si aplica)"
+      "actividades": "String resumen (para compatibilidad)",
+      "objetivo_fase": "String (qué se busca lograr en esta fase - metacognición)",
+      "actividades_docente": [
+        "String - Acción específica del docente 1",
+        "String - Acción específica del docente 2"
+      ],
+      "actividades_estudiante": [
+        "String - Acción específica del estudiante 1",
+        "String - Acción específica del estudiante 2"
+      ]
     }
   ],
   "adaptaciones_sugeridas": {
