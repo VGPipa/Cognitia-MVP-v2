@@ -4,6 +4,7 @@ interface UseAutosaveOptions<T> {
   data: T;
   storageKey: string;
   timestampKey: string;
+  dismissedKey?: string;
   interval?: number;
   enabled?: boolean;
   onRestore?: (data: T) => void;
@@ -16,6 +17,7 @@ interface UseAutosaveReturn<T> {
   draftTimestamp: Date | null;
   restoreDraft: () => T | null;
   clearDraft: () => void;
+  dismissDraft: () => void;
   saveDraft: () => void;
 }
 
@@ -23,6 +25,7 @@ export function useAutosave<T>({
   data,
   storageKey,
   timestampKey,
+  dismissedKey,
   interval = 30000,
   enabled = true
 }: UseAutosaveOptions<T>): UseAutosaveReturn<T> {
@@ -43,15 +46,32 @@ export function useAutosave<T>({
     try {
       const savedDraft = localStorage.getItem(storageKey);
       const savedTimestamp = localStorage.getItem(timestampKey);
+      const dismissedTimestamp = dismissedKey ? localStorage.getItem(dismissedKey) : null;
       
       if (savedDraft && savedTimestamp) {
-        setHasDraft(true);
-        setDraftTimestamp(new Date(savedTimestamp));
+        const draftTime = new Date(savedTimestamp);
+        
+        // Check if draft was dismissed
+        if (dismissedTimestamp) {
+          const dismissedTime = new Date(dismissedTimestamp);
+          // Only show draft if it's newer than when it was dismissed
+          if (draftTime > dismissedTime) {
+            setHasDraft(true);
+            setDraftTimestamp(draftTime);
+          } else {
+            // Draft was dismissed and no new changes - don't show dialog
+            setHasDraft(false);
+          }
+        } else {
+          // No dismissal record - show draft normally
+          setHasDraft(true);
+          setDraftTimestamp(draftTime);
+        }
       }
     } catch (error) {
       console.error('Error checking for draft:', error);
     }
-  }, [storageKey, timestampKey]);
+  }, [storageKey, timestampKey, dismissedKey]);
 
   // Save draft to localStorage
   const saveDraft = useCallback(() => {
@@ -91,13 +111,34 @@ export function useAutosave<T>({
     try {
       localStorage.removeItem(storageKey);
       localStorage.removeItem(timestampKey);
+      if (dismissedKey) {
+        localStorage.removeItem(dismissedKey);
+      }
       setHasDraft(false);
       setDraftTimestamp(null);
       setLastSaved(null);
     } catch (error) {
       console.error('Error clearing draft:', error);
     }
-  }, [storageKey, timestampKey]);
+  }, [storageKey, timestampKey, dismissedKey]);
+
+  // Dismiss draft - marks it as dismissed so dialog won't show again
+  const dismissDraft = useCallback(() => {
+    try {
+      // Store the dismissal timestamp
+      if (dismissedKey) {
+        localStorage.setItem(dismissedKey, new Date().toISOString());
+      }
+      // Also clear the draft data
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(timestampKey);
+      setHasDraft(false);
+      setDraftTimestamp(null);
+      setLastSaved(null);
+    } catch (error) {
+      console.error('Error dismissing draft:', error);
+    }
+  }, [storageKey, timestampKey, dismissedKey]);
 
   // Set up auto-save interval
   useEffect(() => {
@@ -135,6 +176,7 @@ export function useAutosave<T>({
     draftTimestamp,
     restoreDraft,
     clearDraft,
+    dismissDraft,
     saveDraft
   };
 }

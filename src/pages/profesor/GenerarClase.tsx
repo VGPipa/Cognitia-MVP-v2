@@ -145,11 +145,13 @@ export default function GenerarClase() {
     hasDraft,
     draftTimestamp,
     restoreDraft,
-    clearDraft
+    clearDraft,
+    dismissDraft
   } = useAutosave({
     data: formData,
     storageKey: STORAGE_KEYS.DRAFT_FORM,
     timestampKey: STORAGE_KEYS.DRAFT_TIMESTAMP,
+    dismissedKey: STORAGE_KEYS.DRAFT_DISMISSED,
     interval: 30000, // 30 seconds
     enabled: viewMode === 'wizard' && currentStep === 1 && !isClaseCompletada
   });
@@ -1110,7 +1112,7 @@ export default function GenerarClase() {
             setShowDraftDialog(false);
           }}
           onDiscard={() => {
-            clearDraft();
+            dismissDraft();
             setShowDraftDialog(false);
           }}
           draftTimestamp={draftTimestamp}
