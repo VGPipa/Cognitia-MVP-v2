@@ -6,6 +6,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useClases } from '@/hooks/useClases';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
 import { useRecomendacionesSalon } from '@/hooks/useMisSalones';
@@ -13,7 +14,9 @@ import { useQuizzes } from '@/hooks/useQuizzes';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EstadoClase } from '@/components/profesor/EstadoClase';
-import { Loader2 } from 'lucide-react';
+import { GuiaClaseViewer } from '@/components/profesor/GenerarClase';
+import type { GuiaClaseData } from '@/lib/ai/generate';
+import { Loader2, Eye } from 'lucide-react';
 import {
   Sparkles,
   BookOpen,
@@ -45,6 +48,12 @@ export default function ProfesorDashboard() {
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState('preparacion');
   const [activatingQuiz, setActivatingQuiz] = useState<{ claseId: string; tipo: 'previo' | 'post' } | null>(null);
+  
+  // State for guide modal
+  const [guiaModalOpen, setGuiaModalOpen] = useState(false);
+  const [selectedGuia, setSelectedGuia] = useState<GuiaClaseData | null>(null);
+  const [loadingGuia, setLoadingGuia] = useState(false);
+  const [selectedClaseForGuia, setSelectedClaseForGuia] = useState<{ temaNombre?: string; duracion?: number } | null>(null);
   
   // Get real data
   const { clases, isLoading: clasesLoading } = useClases();
@@ -339,6 +348,51 @@ export default function ProfesorDashboard() {
       setActivatingQuiz(null);
     }
   };
+
+  // Handler to view guide in modal
+  const handleVerGuia = async (clase: { id: string; id_guia_version_actual?: string | null; tema?: { nombre?: string } | null; duracion_minutos?: number | null }, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    
+    if (!clase.id_guia_version_actual) {
+      toast({
+        title: 'Sin guía',
+        description: 'Esta clase no tiene una guía generada',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setLoadingGuia(true);
+    setGuiaModalOpen(true);
+    setSelectedClaseForGuia({ 
+      temaNombre: clase.tema?.nombre || 'Guía de Clase',
+      duracion: clase.duracion_minutos || undefined 
+    });
+    setSelectedGuia(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('guias_clase_versiones')
+        .select('contenido')
+        .eq('id', clase.id_guia_version_actual)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data?.contenido) {
+        setSelectedGuia(data.contenido as unknown as GuiaClaseData);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar la guía: ' + error.message,
+        variant: 'destructive'
+      });
+      setGuiaModalOpen(false);
+    } finally {
+      setLoadingGuia(false);
+    }
+  };
   
   if (clasesLoading) {
     return (
@@ -494,13 +548,16 @@ export default function ProfesorDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => navigate(`/profesor/generar-clase?clase=${clase.id}`)}
-                            >
-                              Ver guía
-                            </Button>
+                            {clase.id_guia_version_actual && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={(e) => handleVerGuia(clase, e)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Ver guía
+                              </Button>
+                            )}
                             <Button 
                               variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
                               size="sm"
@@ -583,13 +640,16 @@ export default function ProfesorDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => navigate(`/profesor/generar-clase?clase=${clase.id}`)}
-                            >
-                              Ver guía
-                            </Button>
+                            {clase.id_guia_version_actual && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={(e) => handleVerGuia(clase, e)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Ver guía
+                              </Button>
+                            )}
                             <Button 
                               variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
                               size="sm"
@@ -666,13 +726,16 @@ export default function ProfesorDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => navigate(`/profesor/generar-clase?clase=${clase.id}`)}
-                            >
-                              Ver guía
-                            </Button>
+                            {clase.id_guia_version_actual && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={(e) => handleVerGuia(clase, e)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Ver guía
+                              </Button>
+                            )}
                             <Button 
                               variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
                               size="sm"
@@ -815,6 +878,35 @@ export default function ProfesorDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Guide Modal */}
+      <Dialog open={guiaModalOpen} onOpenChange={setGuiaModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              {selectedClaseForGuia?.temaNombre || 'Guía de Clase'}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingGuia ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Cargando guía...</p>
+            </div>
+          ) : selectedGuia ? (
+            <GuiaClaseViewer 
+              guia={selectedGuia} 
+              duracion={selectedClaseForGuia?.duracion}
+              readOnly={true}
+              isLoaded={true}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No se pudo cargar la guía</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
