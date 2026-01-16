@@ -1123,7 +1123,7 @@ export default function GenerarClase() {
 
                     {/* Duración - Horas Pedagógicas */}
                     <div className="space-y-2">
-                      <Label>Duración de la sesión *</Label>
+                      <Label>Duración del momento de la sesión *</Label>
                       <div className="flex items-center gap-3">
                         <Select 
                           value={String(formData.duracion)} 
