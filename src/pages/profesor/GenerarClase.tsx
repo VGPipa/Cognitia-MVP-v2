@@ -39,8 +39,12 @@ import {
   Calendar,
   Users,
   GraduationCap,
-  Wand2
+  Wand2,
+  Plus,
+  X
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 
 // Import refactored components
@@ -49,6 +53,7 @@ import {
   MATERIALES_DISPONIBLES,
   HORAS_PEDAGOGICAS,
   STORAGE_KEYS,
+  ADAPTACIONES_PRIORITARIAS,
   parseGradoFromGrupo,
   getInitialFormData,
   getMissingFields as getMissingFieldsUtil,
@@ -93,6 +98,10 @@ export default function GenerarClase() {
   const [isGeneratingDesempeno, setIsGeneratingDesempeno] = useState(false);
   const [userNavigatedBack, setUserNavigatedBack] = useState(false);
   
+  // Collapsible "Otro" fields state
+  const [showMaterialOtro, setShowMaterialOtro] = useState(false);
+  const [showAdaptacionOtro, setShowAdaptacionOtro] = useState(false);
+  
   // Data from DB
   const [temaData, setTemaData] = useState<any>(null);
   const [cursoData, setCursoData] = useState<any>(null);
@@ -115,6 +124,11 @@ export default function GenerarClase() {
   const { capacidades: capacidadesCNEB } = useCapacidadesCNEB(formData.competencias);
   const { enfoques } = useEnfoquesTransversales();
   const { tiposAdaptacion } = useTiposAdaptacion();
+
+  // Filter adaptaciones to show only priority ones
+  const adaptacionesFiltradas = useMemo(() => {
+    return tiposAdaptacion.filter(t => ADAPTACIONES_PRIORITARIAS.includes(t.nombre));
+  }, [tiposAdaptacion]);
 
   // Generated content
   const [guiaGenerada, setGuiaGenerada] = useState<GuiaClaseData | null>(null);
@@ -1087,7 +1101,7 @@ export default function GenerarClase() {
           <CardContent className="p-6">
             {/* Step 1: Context */}
             {currentStep === 1 && (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Read-only mode banner for completed classes */}
                 {isClaseCompletada && (
                   <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
@@ -1098,9 +1112,9 @@ export default function GenerarClase() {
                   </div>
                 )}
                 
-                {/* SECCIÓN 1: DATOS */}
-                <fieldset className="p-4 border rounded-lg space-y-4">
-                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                {/* SECCIÓN 1: DATOS - Diseño mejorado con borde izquierdo */}
+                <fieldset className="p-5 border-l-4 border-l-primary/60 border border-border rounded-lg space-y-4 bg-card shadow-sm">
+                  <legend className="text-lg font-semibold px-3 py-1 bg-primary/10 rounded-md flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-primary" />
                     Datos
                   </legend>
@@ -1218,35 +1232,80 @@ export default function GenerarClase() {
                   </div>
                 </fieldset>
 
-                {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE - NUEVO DISEÑO POR COMPETENCIA */}
-                <fieldset className="p-4 border rounded-lg space-y-4">
-                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                {/* SECCIÓN 2: PROPÓSITOS DE APRENDIZAJE - Diseño mejorado */}
+                <fieldset className="p-5 border-l-4 border-l-primary/60 border border-border rounded-lg space-y-4 bg-card shadow-sm">
+                  <legend className="text-lg font-semibold px-3 py-1 bg-primary/10 rounded-md flex items-center gap-2">
                     <Target className="w-5 h-5 text-primary" />
                     Propósitos de Aprendizaje
                   </legend>
                   
-                  {/* Selección de Competencias */}
+                  {/* Selección de Competencias - Nuevo diseño con Popover */}
                   <div className="space-y-2">
-                    <Label>Competencias * (selección múltiple)</Label>
-                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                      {formData.areaAcademica ? (
-                        competenciasCNEB.map(comp => (
+                    <Label>Competencias *</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-background min-h-[48px] items-center">
+                      {/* Mostrar competencias seleccionadas */}
+                      {formData.competencias.map(compId => {
+                        const comp = competenciasCNEB.find(c => c.id === compId);
+                        if (!comp) return null;
+                        return (
                           <Badge
-                            key={comp.id}
-                            variant={formData.competencias.includes(comp.id) ? 'default' : 'outline'}
-                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                            onClick={() => toggleCompetencia(comp.id)}
+                            key={compId}
+                            variant="default"
+                            className="text-xs flex items-center gap-1 pr-1"
                           >
-                            {comp.nombre}
+                            <span className="max-w-[200px] truncate">{comp.nombre}</span>
+                            {!isClaseCompletada && (
+                              <button
+                                type="button"
+                                onClick={() => toggleCompetencia(compId)}
+                                className="ml-1 hover:bg-primary-foreground/20 rounded-full p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
                           </Badge>
-                        ))
-                      ) : (
+                        );
+                      })}
+                      
+                      {/* Botón para agregar competencias */}
+                      {!isClaseCompletada && formData.areaAcademica && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                              <Plus className="w-3 h-3" />
+                              Agregar
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-2" align="start">
+                            <p className="text-sm font-medium mb-2 px-2">Seleccionar competencias</p>
+                            <ScrollArea className="max-h-[250px]">
+                              <div className="space-y-1">
+                                {competenciasCNEB.filter(c => !formData.competencias.includes(c.id)).map(comp => (
+                                  <button
+                                    key={comp.id}
+                                    type="button"
+                                    onClick={() => toggleCompetencia(comp.id)}
+                                    className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                                  >
+                                    {comp.nombre}
+                                  </button>
+                                ))}
+                                {competenciasCNEB.filter(c => !formData.competencias.includes(c.id)).length === 0 && (
+                                  <p className="text-xs text-muted-foreground p-2">Todas las competencias ya están seleccionadas</p>
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      
+                      {!formData.areaAcademica && (
                         <span className="text-sm text-muted-foreground">Primero selecciona un área académica</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Secciones expandidas por competencia seleccionada - Using refactored component */}
+                  {/* Secciones expandidas por competencia seleccionada */}
                   {formData.competencias.length > 0 && (
                     <div className="space-y-4">
                       {formData.competencias.map(compId => {
@@ -1274,43 +1333,88 @@ export default function GenerarClase() {
                     </div>
                   )}
 
-                  {formData.competencias.length === 0 && (
+                  {formData.competencias.length === 0 && formData.areaAcademica && (
                     <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg text-center">
-                      Selecciona competencias arriba para configurar capacidades y desempeños
+                      Usa el botón "Agregar" para seleccionar competencias
                     </p>
                   )}
 
-                  {/* Enfoques Transversales - Selección Múltiple */}
+                  {/* Enfoques Transversales - Nuevo diseño con Popover */}
                   <div className="space-y-2">
-                    <Label>Enfoques Transversales * (selección múltiple)</Label>
-                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                      {enfoques.map(enfoque => {
-                        const isSelected = formData.enfoquesTransversales.includes(enfoque.id);
+                    <Label>Enfoques Transversales *</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-background min-h-[48px] items-center">
+                      {/* Mostrar enfoques seleccionados */}
+                      {formData.enfoquesTransversales.map(enfoqueId => {
+                        const enfoque = enfoques.find(e => e.id === enfoqueId);
+                        if (!enfoque) return null;
                         return (
                           <Badge
-                            key={enfoque.id}
-                            variant={isSelected ? 'default' : 'outline'}
-                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
-                            onClick={() => {
-                              if (!isClaseCompletada) {
-                                const newEnfoques = isSelected
-                                  ? formData.enfoquesTransversales.filter(id => id !== enfoque.id)
-                                  : [...formData.enfoquesTransversales, enfoque.id];
-                                setFormData({...formData, enfoquesTransversales: newEnfoques});
-                              }
-                            }}
+                            key={enfoqueId}
+                            variant="default"
+                            className="text-xs flex items-center gap-1 pr-1"
                           >
-                            {enfoque.nombre}
+                            <span>{enfoque.nombre}</span>
+                            {!isClaseCompletada && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData({
+                                    ...formData,
+                                    enfoquesTransversales: formData.enfoquesTransversales.filter(id => id !== enfoqueId)
+                                  });
+                                }}
+                                className="ml-1 hover:bg-primary-foreground/20 rounded-full p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
                           </Badge>
                         );
                       })}
+                      
+                      {/* Botón para agregar enfoques */}
+                      {!isClaseCompletada && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                              <Plus className="w-3 h-3" />
+                              Agregar
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-2" align="start">
+                            <p className="text-sm font-medium mb-2 px-2">Seleccionar enfoques transversales</p>
+                            <ScrollArea className="max-h-[250px]">
+                              <div className="space-y-1">
+                                {enfoques.filter(e => !formData.enfoquesTransversales.includes(e.id)).map(enfoque => (
+                                  <button
+                                    key={enfoque.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({
+                                        ...formData,
+                                        enfoquesTransversales: [...formData.enfoquesTransversales, enfoque.id]
+                                      });
+                                    }}
+                                    className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                                  >
+                                    {enfoque.nombre}
+                                  </button>
+                                ))}
+                                {enfoques.filter(e => !formData.enfoquesTransversales.includes(e.id)).length === 0 && (
+                                  <p className="text-xs text-muted-foreground p-2">Todos los enfoques ya están seleccionados</p>
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                   </div>
                 </fieldset>
 
-                {/* SECCIÓN 3: MATERIALES DISPONIBLES */}
-                <fieldset className="p-4 border rounded-lg space-y-4">
-                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                {/* SECCIÓN 3: MATERIALES DISPONIBLES - Diseño mejorado */}
+                <fieldset className="p-5 border-l-4 border-l-primary/60 border border-border rounded-lg space-y-4 bg-card shadow-sm">
+                  <legend className="text-lg font-semibold px-3 py-1 bg-primary/10 rounded-md flex items-center gap-2">
                     <Settings className="w-5 h-5 text-primary" />
                     Materiales Disponibles *
                   </legend>
@@ -1336,26 +1440,58 @@ export default function GenerarClase() {
                     ))}
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label>Otro material (opcional)</Label>
-                    <Input 
-                      placeholder="Especifica otros materiales..."
-                      value={formData.materialOtro}
-                      onChange={(e) => setFormData({...formData, materialOtro: e.target.value})}
-                      disabled={isClaseCompletada}
-                    />
-                  </div>
+                  {/* Otro material - Colapsable */}
+                  {!isClaseCompletada && (
+                    <>
+                      {showMaterialOtro || formData.materialOtro ? (
+                        <div className="flex gap-2 items-center">
+                          <Input 
+                            placeholder="Especifica otros materiales..."
+                            value={formData.materialOtro}
+                            onChange={(e) => setFormData({...formData, materialOtro: e.target.value})}
+                            className="flex-1"
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              setFormData({...formData, materialOtro: ''});
+                              setShowMaterialOtro(false);
+                            }}
+                            className="h-9 w-9"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setShowMaterialOtro(true)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Agregar otro material
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {isClaseCompletada && formData.materialOtro && (
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">Otro:</span> {formData.materialOtro}
+                    </div>
+                  )}
                 </fieldset>
 
-                {/* SECCIÓN 4: ADAPTACIONES */}
-                <fieldset className="p-4 border rounded-lg space-y-4">
-                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                {/* SECCIÓN 4: ADAPTACIONES - Diseño mejorado */}
+                <fieldset className="p-5 border-l-4 border-l-primary/60 border border-border rounded-lg space-y-4 bg-card shadow-sm">
+                  <legend className="text-lg font-semibold px-3 py-1 bg-primary/10 rounded-md flex items-center gap-2">
                     <Heart className="w-5 h-5 text-primary" />
                     Adaptaciones (NEE)
                   </legend>
                   
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {tiposAdaptacion.map(tipo => (
+                    {adaptacionesFiltradas.map(tipo => (
                       <div key={tipo.id} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`adapt-${tipo.id}`}
@@ -1375,21 +1511,53 @@ export default function GenerarClase() {
                     ))}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Adaptaciones personalizadas (opcional)</Label>
-                    <Textarea 
-                      placeholder="Describe adaptaciones específicas para estudiantes con NEE..."
-                      value={formData.adaptacionesPersonalizadas}
-                      onChange={(e) => setFormData({...formData, adaptacionesPersonalizadas: e.target.value})}
-                      rows={2}
-                      disabled={isClaseCompletada}
-                    />
-                  </div>
+                  {/* Adaptación personalizada - Colapsable */}
+                  {!isClaseCompletada && (
+                    <>
+                      {showAdaptacionOtro || formData.adaptacionesPersonalizadas ? (
+                        <div className="flex gap-2 items-start">
+                          <Textarea 
+                            placeholder="Describe adaptaciones específicas para estudiantes con NEE..."
+                            value={formData.adaptacionesPersonalizadas}
+                            onChange={(e) => setFormData({...formData, adaptacionesPersonalizadas: e.target.value})}
+                            rows={2}
+                            className="flex-1"
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              setFormData({...formData, adaptacionesPersonalizadas: ''});
+                              setShowAdaptacionOtro(false);
+                            }}
+                            className="h-9 w-9 mt-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setShowAdaptacionOtro(true)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Agregar adaptación personalizada
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {isClaseCompletada && formData.adaptacionesPersonalizadas && (
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">Personalizada:</span> {formData.adaptacionesPersonalizadas}
+                    </div>
+                  )}
                 </fieldset>
 
-                {/* SECCIÓN 5: CONTEXTO */}
-                <fieldset className="p-4 border rounded-lg space-y-4">
-                  <legend className="text-lg font-semibold px-2 flex items-center gap-2">
+                {/* SECCIÓN 5: CONTEXTO - Diseño mejorado */}
+                <fieldset className="p-5 border-l-4 border-l-primary/60 border border-border rounded-lg space-y-4 bg-card shadow-sm">
+                  <legend className="text-lg font-semibold px-3 py-1 bg-primary/10 rounded-md flex items-center gap-2">
                     <Info className="w-5 h-5 text-primary" />
                     Contexto Adicional
                   </legend>
