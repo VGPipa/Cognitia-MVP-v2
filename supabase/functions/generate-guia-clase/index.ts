@@ -6,112 +6,75 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia, una IA experta en diseñar sesiones de aprendizaje para escuelas peruanas alineadas al Currículo Nacional (CNEB). Tu objetivo es generar una GUÍA DE CLASE en formato JSON estricto siguiendo la estructura oficial del MINEDU.
+const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia. Genera GUÍAS DE CLASE en JSON para escuelas peruanas (CNEB/MINEDU).
 
-### INSTRUCCIONES CRÍTICAS:
-1. DEBES usar EXACTAMENTE las competencias, capacidades y desempeños que se te proporcionan
-2. La salida debe ser ÚNICAMENTE un objeto JSON válido
-3. No incluyas texto antes ni después del JSON
-4. Si falta información, infiere lo más adecuado para el contexto peruano
-5. IMPORTANTE: Los criterios_evaluacion deben ser un ARRAY de desempeños específicos por competencia
+### REGLAS CRÍTICAS:
+1. Responde SOLO con JSON válido, SIN markdown, SIN \`\`\`
+2. Sé CONCISO: máximo 2-3 oraciones por actividad
+3. Usa EXACTAMENTE las competencias/desempeños proporcionados
+4. NO incluyas texto antes ni después del JSON
 
-### ESTRUCTURA DEL JSON (SCHEMA OBLIGATORIO):
+### SCHEMA JSON OBLIGATORIO:
 {
   "datos_generales": {
-    "titulo_sesion": "String creativo y descriptivo",
-    "nivel": "String (Primaria/Secundaria)",
-    "grado": "String (ej: 4to Secundaria)",
+    "titulo_sesion": "String creativo (máx 15 palabras)",
+    "nivel": "Primaria/Secundaria",
+    "grado": "ej: 4to Secundaria",
     "area_academica": "String",
-    "duracion": "String (ej: 90 minutos)"
+    "duracion": "ej: 90 minutos"
   },
-  "propositos_aprendizaje": [
-    {
-      "competencia": "String (USAR la competencia proporcionada)",
-      "criterios_evaluacion": [
-        "String - Desempeño 1 observable y medible para esta competencia",
-        "String - Desempeño 2 observable y medible para esta competencia"
-      ],
-      "evidencia_aprendizaje": "String (producto o actuación que demuestra el aprendizaje)",
-      "instrumento_valoracion": "String (Rúbrica, Lista de cotejo, etc.)"
-    }
-  ],
-  "enfoques_transversales": [
-    {
-      "nombre": "String (USAR el enfoque proporcionado si existe)",
-      "descripcion": "String (cómo se evidencia en la sesión)"
-    }
-  ],
+  "propositos_aprendizaje": [{
+    "competencia": "String (USAR la proporcionada)",
+    "criterios_evaluacion": ["Desempeño 1", "Desempeño 2"],
+    "evidencia_aprendizaje": "String breve",
+    "instrumento_valoracion": "Rúbrica/Lista de cotejo"
+  }],
+  "enfoques_transversales": [{
+    "nombre": "String",
+    "descripcion": "String breve (1 oración)"
+  }],
   "preparacion": {
-    "antes_sesion": "String (qué debe hacer el docente antes)",
-    "materiales": ["String", "String"]
+    "antes_sesion": "String breve",
+    "materiales": ["Material 1", "Material 2"]
   },
   "momentos_sesion": [
     {
       "fase": "INICIO",
-      "duracion": "String (ej: 15 min)",
-      "actividades": "String resumen (para compatibilidad)",
-      "objetivo_fase": "String (qué se busca lograr en esta fase)",
-      "actividades_docente": [
-        "String - Acción específica del docente 1",
-        "String - Acción específica del docente 2"
-      ],
-      "actividades_estudiante": [
-        "String - Acción específica del estudiante 1",
-        "String - Acción específica del estudiante 2"
-      ]
+      "duracion": "ej: 15 min",
+      "actividades": "Resumen breve",
+      "objetivo_fase": "Qué se busca (1 oración)",
+      "actividades_docente": ["Acción 1", "Acción 2", "Acción 3"],
+      "actividades_estudiante": ["Acción 1", "Acción 2", "Acción 3"]
     },
     {
       "fase": "DESARROLLO",
-      "duracion": "String (ej: 60 min)",
-      "actividades": "String resumen (para compatibilidad)",
-      "objetivo_fase": "String (qué se busca lograr en esta fase)",
-      "actividades_docente": [
-        "String - Acción específica del docente 1",
-        "String - Acción específica del docente 2",
-        "String - Acción específica del docente 3"
-      ],
-      "actividades_estudiante": [
-        "String - Acción específica del estudiante 1",
-        "String - Acción específica del estudiante 2",
-        "String - Acción específica del estudiante 3"
-      ]
+      "duracion": "ej: 60 min",
+      "actividades": "Resumen breve",
+      "objetivo_fase": "Qué se busca (1 oración)",
+      "actividades_docente": ["Acción 1", "Acción 2", "Acción 3", "Acción 4"],
+      "actividades_estudiante": ["Acción 1", "Acción 2", "Acción 3", "Acción 4"]
     },
     {
       "fase": "CIERRE",
-      "duracion": "String (ej: 15 min)",
-      "actividades": "String resumen (para compatibilidad)",
-      "objetivo_fase": "String (qué se busca lograr en esta fase - metacognición)",
-      "actividades_docente": [
-        "String - Acción específica del docente 1",
-        "String - Acción específica del docente 2"
-      ],
-      "actividades_estudiante": [
-        "String - Acción específica del estudiante 1",
-        "String - Acción específica del estudiante 2"
-      ]
+      "duracion": "ej: 15 min",
+      "actividades": "Resumen breve",
+      "objetivo_fase": "Metacognición (1 oración)",
+      "actividades_docente": ["Acción 1", "Acción 2"],
+      "actividades_estudiante": ["Acción 1", "Acción 2"]
     }
   ],
   "adaptaciones_sugeridas": {
-    "estrategias_diferenciadas": "String (descripción general de estrategias diferenciadas)",
-    "apoyo_adicional": [
-      "String - Estrategia para estudiantes que necesitan más apoyo 1",
-      "String - Estrategia para estudiantes que necesitan más apoyo 2"
-    ],
-    "extension_avanzados": [
-      "String - Actividad de extensión para estudiantes avanzados 1",
-      "String - Actividad de extensión para estudiantes avanzados 2"
-    ],
-    "recursos_apoyo": [
-      "String - Recurso de apoyo adicional 1",
-      "String - Recurso de apoyo adicional 2"
-    ]
+    "estrategias_diferenciadas": "Descripción general breve",
+    "apoyo_adicional": ["Estrategia 1", "Estrategia 2"],
+    "extension_avanzados": ["Actividad 1", "Actividad 2"],
+    "recursos_apoyo": ["Recurso 1", "Recurso 2"]
   }
 }
 
-### FILOSOFÍA PEDAGÓGICA:
-- INICIO: Conexión emocional + activación de saberes previos + propósito claro
-- DESARROLLO: Reto cognitivo + trabajo colaborativo + andamiaje progresivo
-- CIERRE: Metacognición (¿qué aprendí? ¿cómo lo aprendí? ¿para qué me sirve?)`;
+### FILOSOFÍA (aplicar pero NO escribir en JSON):
+- INICIO: Conexión emocional + saberes previos + propósito
+- DESARROLLO: Reto cognitivo + trabajo colaborativo
+- CIERRE: Metacognición`;
 
 interface CompetenciaConDesempenos {
   competencia: string;
@@ -254,6 +217,7 @@ INSTRUCCIONES CRÍTICAS:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        max_tokens: 4000,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userPrompt }
@@ -284,7 +248,7 @@ INSTRUCCIONES CRÍTICAS:
       throw new Error("La IA no generó contenido");
     }
 
-    // Parse the JSON response - handle markdown code blocks
+    // Parse the JSON response - handle markdown code blocks and truncation
     let guiaData;
     try {
       // Remove markdown code blocks if present
@@ -299,12 +263,40 @@ INSTRUCCIONES CRÍTICAS:
       }
       jsonContent = jsonContent.trim();
       
+      // Try to fix truncated JSON by finding incomplete structures
+      // Check if response seems truncated (doesn't end with })
+      if (!jsonContent.endsWith('}')) {
+        console.warn("Response appears truncated, attempting to fix...");
+        // Find the last complete object/array closure
+        let braceCount = 0;
+        let bracketCount = 0;
+        let lastValidIndex = -1;
+        
+        for (let i = 0; i < jsonContent.length; i++) {
+          const char = jsonContent[i];
+          if (char === '{') braceCount++;
+          if (char === '}') {
+            braceCount--;
+            if (braceCount === 0) lastValidIndex = i;
+          }
+          if (char === '[') bracketCount++;
+          if (char === ']') bracketCount--;
+        }
+        
+        // If we found a valid closing point, truncate there
+        if (lastValidIndex > 0 && lastValidIndex < jsonContent.length - 1) {
+          jsonContent = jsonContent.substring(0, lastValidIndex + 1);
+          console.log("Truncated JSON fixed at position:", lastValidIndex);
+        }
+      }
+      
       guiaData = JSON.parse(jsonContent);
       console.log("JSON parsed successfully");
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", parseError);
-      console.error("Raw content:", content);
-      throw new Error("La respuesta de la IA no es un JSON válido");
+      console.error("Raw content length:", content.length);
+      console.error("Raw content preview:", content.substring(0, 500));
+      throw new Error("La respuesta de la IA no es un JSON válido. Por favor, intenta de nuevo.");
     }
 
     // Ensure required fields exist with defaults based on new schema
