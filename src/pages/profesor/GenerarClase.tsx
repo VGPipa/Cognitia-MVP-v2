@@ -100,26 +100,11 @@ export default function GenerarClase() {
   // Check if class is completed (read-only mode)
   const isClaseCompletada = claseData?.estado === 'completada';
   
-  // Form state - now with desempeños per competencia
-  const [formData, setFormData] = useState({
-    fecha: '',
-    duracion: 55,
-    areaAcademica: '' as string,
-    // Propósitos de aprendizaje - NUEVA ESTRUCTURA
-    competencias: [] as string[],
-    capacidadesPorCompetencia: {} as Record<string, string[]>,  // { competenciaId: [capacidadIds] }
-    desempenosPorCompetencia: {} as Record<string, string[]>,   // { competenciaId: [desempeños] }
-    enfoqueTransversal: '' as string,
-    // Materiales
-    materiales: [] as string[],
-    materialOtro: '' as string,
-    // Adaptaciones
-    adaptaciones: [] as string[],
-    adaptacionesPersonalizadas: '' as string,
-    // Legacy/Extraordinaria
-    contexto: '',
-    temaPersonalizado: ''
-  });
+  // Form state - initialized using utility function
+  const [formData, setFormData] = useState<FormData>(getInitialFormData());
+  
+  // Draft restore dialog state
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
   
   // State for tracking which competencia is generating desempeños
   const [generatingForCompetencia, setGeneratingForCompetencia] = useState<string | null>(null);
@@ -143,6 +128,35 @@ export default function GenerarClase() {
     grupoData ? parseGradoFromGrupo(grupoData) : null, 
     [grupoData]
   );
+
+  // Calculate section progress for wizard
+  const sectionProgress = useMemo(() => 
+    calculateSectionProgress(formData, isExtraordinaria, temaData, grupoData),
+    [formData, isExtraordinaria, temaData, grupoData]
+  );
+
+  // Autosave hook - only active in wizard mode step 1
+  const {
+    lastSaved,
+    isSaving,
+    hasDraft,
+    draftTimestamp,
+    restoreDraft,
+    clearDraft
+  } = useAutosave({
+    data: formData,
+    storageKey: STORAGE_KEYS.DRAFT_FORM,
+    timestampKey: STORAGE_KEYS.DRAFT_TIMESTAMP,
+    interval: 30000, // 30 seconds
+    enabled: viewMode === 'wizard' && currentStep === 1 && !isClaseCompletada
+  });
+
+  // Show draft dialog on mount if draft exists
+  useEffect(() => {
+    if (hasDraft && viewMode === 'wizard' && !claseId) {
+      setShowDraftDialog(true);
+    }
+  }, [hasDraft, viewMode, claseId]);
 
   // Computed data for selection mode
   const clasesEnProceso = useMemo(() => {
@@ -1115,39 +1129,32 @@ export default function GenerarClase() {
           </div>
         </div>
 
-        {/* Progress */}
-        <div className="space-y-4">
-          <div className="flex justify-between">
-            {STEPS.map((step) => (
-              <div 
-                key={step.id}
-                className={`flex items-center gap-2 ${
-                  step.id === currentStep 
-                    ? 'text-primary' 
-                    : step.id < currentStep 
-                      ? 'text-success' 
-                      : 'text-muted-foreground'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.id === currentStep 
-                    ? 'gradient-bg text-primary-foreground' 
-                    : step.id < currentStep 
-                      ? 'bg-success text-success-foreground' 
-                      : 'bg-muted'
-                }`}>
-                  {step.id < currentStep ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <step.icon className="w-4 h-4" />
-                  )}
-                </div>
-                <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
-              </div>
-            ))}
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
+        {/* Progress - Using refactored component */}
+        <WizardProgress 
+          currentStep={currentStep}
+          sectionProgress={currentStep === 1 ? sectionProgress : undefined}
+          lastSaved={lastSaved}
+          isSaving={isSaving}
+        />
+
+        {/* Draft Restore Dialog */}
+        <DraftRestoreDialog
+          open={showDraftDialog}
+          onOpenChange={setShowDraftDialog}
+          onRestore={() => {
+            const restored = restoreDraft();
+            if (restored) {
+              setFormData(restored);
+              toast({ title: 'Borrador restaurado', description: 'Se han recuperado los datos guardados' });
+            }
+            setShowDraftDialog(false);
+          }}
+          onDiscard={() => {
+            clearDraft();
+            setShowDraftDialog(false);
+          }}
+          draftTimestamp={draftTimestamp}
+        />
 
         {/* Step content */}
         <Card>
@@ -1306,115 +1313,29 @@ export default function GenerarClase() {
                     </div>
                   </div>
 
-                  {/* Secciones expandidas por competencia seleccionada */}
+                  {/* Secciones expandidas por competencia seleccionada - Using refactored component */}
                   {formData.competencias.length > 0 && (
                     <div className="space-y-4">
                       {formData.competencias.map(compId => {
                         const comp = competenciasCNEB.find(c => c.id === compId);
                         const capsForComp = getCapacidadesForCompetencia(compId);
-                        const selectedCaps = formData.capacidadesPorCompetencia[compId] || [];
-                        const desempenos = formData.desempenosPorCompetencia[compId] || [];
-                        const isGenerating = generatingForCompetencia === compId;
                         
                         return (
-                          <div key={compId} className="border rounded-lg p-4 bg-muted/20 space-y-4">
-                            {/* Header de competencia */}
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-semibold text-primary flex items-center gap-2">
-                                <GraduationCap className="w-4 h-4" />
-                                {comp?.nombre}
-                              </h4>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleGenerarDesempenoParaCompetencia(compId)}
-                                disabled={selectedCaps.length === 0 || isGenerating || isClaseCompletada}
-                                className="gap-2"
-                              >
-                                {isGenerating ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Generando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Wand2 className="w-4 h-4" />
-                                    Generar Desempeños
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            
-                            {/* Capacidades de esta competencia */}
-                            <div className="space-y-2">
-                              <Label className="text-sm">Capacidades *</Label>
-                              <div className="flex flex-wrap gap-2 p-2 border rounded bg-background min-h-[40px]">
-                                {capsForComp.length > 0 ? (
-                                  capsForComp.map(cap => (
-                                    <Badge
-                                      key={cap.id}
-                                      variant={selectedCaps.includes(cap.id) ? 'default' : 'outline'}
-                                      className={isClaseCompletada ? "cursor-not-allowed text-xs" : "cursor-pointer text-xs"}
-                                      onClick={() => toggleCapacidadForCompetencia(compId, cap.id)}
-                                    >
-                                      {cap.nombre}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">No hay capacidades disponibles</span>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Desempeños de esta competencia */}
-                            <div className="space-y-2">
-                              <Label className="text-sm">Desempeños *</Label>
-                              {desempenos.length > 0 ? (
-                                <div className="space-y-2">
-                                  {desempenos.map((desemp, idx) => (
-                                    <div key={idx} className="flex gap-2">
-                                      <span className="text-primary font-bold mt-2">•</span>
-                                      <Textarea
-                                        value={desemp}
-                                        onChange={(e) => updateDesempenoForCompetencia(compId, idx, e.target.value)}
-                                        placeholder="Describe el desempeño..."
-                                        rows={2}
-                                        disabled={isClaseCompletada}
-                                        className="flex-1"
-                                      />
-                                      {!isClaseCompletada && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => removeDesempenoFromCompetencia(compId, idx)}
-                                          className="text-destructive hover:text-destructive h-8 w-8 mt-1"
-                                        >
-                                          ×
-                                        </Button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                                  Selecciona capacidades y usa "Generar Desempeños" o agrega manualmente
-                                </p>
-                              )}
-                              {!isClaseCompletada && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => addDesempenoForCompetencia(compId)}
-                                  className="text-primary text-xs"
-                                >
-                                  + Agregar desempeño
-                                </Button>
-                              )}
-                            </div>
-                          </div>
+                          <CompetenciaSection
+                            key={compId}
+                            competenciaId={compId}
+                            competenciaNombre={comp?.nombre || ''}
+                            capacidades={capsForComp}
+                            selectedCapacidades={formData.capacidadesPorCompetencia[compId] || []}
+                            desempenos={formData.desempenosPorCompetencia[compId] || []}
+                            isGenerating={generatingForCompetencia === compId}
+                            isClaseCompletada={isClaseCompletada}
+                            onToggleCapacidad={(capId) => toggleCapacidadForCompetencia(compId, capId)}
+                            onGenerarDesempenos={() => handleGenerarDesempenoParaCompetencia(compId)}
+                            onUpdateDesempeno={(idx, value) => updateDesempenoForCompetencia(compId, idx, value)}
+                            onAddDesempeno={() => addDesempenoForCompetencia(compId)}
+                            onRemoveDesempeno={(idx) => removeDesempenoFromCompetencia(compId, idx)}
+                          />
                         );
                       })}
                     </div>
