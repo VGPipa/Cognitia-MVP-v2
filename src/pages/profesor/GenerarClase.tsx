@@ -90,6 +90,7 @@ export default function GenerarClase() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isGeneratingDesempeno, setIsGeneratingDesempeno] = useState(false);
+  const [userNavigatedBack, setUserNavigatedBack] = useState(false);
   
   // Data from DB
   const [temaData, setTemaData] = useState<any>(null);
@@ -391,16 +392,16 @@ export default function GenerarClase() {
     }
   }, [temaId, cursoId, claseId, profesorId, asignaciones]);
 
-  // Effect to advance to appropriate step when data is loaded
+  // Effect to advance to appropriate step when data is loaded (but not if user manually navigated back)
   useEffect(() => {
     if (!isLoadingData && viewMode === 'wizard' && claseData) {
-      if (currentStep === 1) {
+      if (currentStep === 1 && !userNavigatedBack) {
         if (guiaGenerada) {
           setCurrentStep(2);
         }
       }
     }
-  }, [isLoadingData, viewMode, guiaGenerada, currentStep, claseData]);
+  }, [isLoadingData, viewMode, guiaGenerada, currentStep, claseData, userNavigatedBack]);
 
   // Handler: Select a session to continue
   const handleSeleccionarSesion = async (clase: Clase) => {
@@ -1801,7 +1802,10 @@ export default function GenerarClase() {
         <div className="flex justify-between">
           <Button 
             variant="outline" 
-            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+            onClick={() => {
+              setUserNavigatedBack(true);
+              setCurrentStep(Math.max(1, currentStep - 1));
+            }}
             disabled={currentStep === 1}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -1813,7 +1817,10 @@ export default function GenerarClase() {
               guiaGenerada ? (
                 <Button 
                   variant="gradient"
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => {
+                    setUserNavigatedBack(false);
+                    setCurrentStep(2);
+                  }}
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   Ver Guía
