@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +20,7 @@ import { useCompetenciasCNEB } from '@/hooks/useCompetenciasCNEB';
 import { useCapacidadesCNEB } from '@/hooks/useCapacidadesCNEB';
 import { useEnfoquesTransversales } from '@/hooks/useEnfoquesTransversales';
 import { useTiposAdaptacion } from '@/hooks/useTiposAdaptacion';
+import { useAutosave } from '@/hooks/useAutosave';
 import { supabase } from '@/integrations/supabase/client';
 import { generateGuiaClase, type GuiaClaseData } from '@/lib/ai/generate';
 import {
@@ -34,51 +34,35 @@ import {
   Loader2,
   Info,
   Lock,
-  Calendar,
-  Users,
   Heart,
-  GraduationCap,
   Clock,
   Lightbulb,
   Eye,
   Settings,
+  Calendar,
+  Users,
+  GraduationCap,
   Wand2
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
-// Wizard simplificado a 3 pasos
-const STEPS = [
-  { id: 1, title: 'Contexto', icon: BookOpen },
-  { id: 2, title: 'Guía de Clase', icon: Sparkles },
-  { id: 3, title: 'Validar', icon: FileCheck }
-];
-
-const MATERIALES_DISPONIBLES = [
-  { id: 'computadoras', nombre: 'Computadoras' },
-  { id: 'proyector', nombre: 'Proyector / TV' },
-  { id: 'patio', nombre: 'Patio / espacio libre' },
-  { id: 'material_impreso', nombre: 'Material impreso' },
-  { id: 'celular', nombre: 'Computador / Celular' }
-];
-
-const DURACIONES = [
-  { value: 45, label: '45 minutos' },
-  { value: 55, label: '55 minutos' },
-  { value: 60, label: '60 minutos' },
-  { value: 90, label: '90 minutos' }
-];
-
-// Helper para parsear grado del grupo
-const parseGradoFromGrupo = (grupo: { grado: string; seccion?: string | null }) => {
-  const match = grupo.grado.match(/^(\d+)°?\s*(Primaria|Secundaria)/i);
-  if (match) {
-    return {
-      gradoNum: match[1],
-      nivel: match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase(),
-      gradoCompleto: `${match[1]}° ${match[2]}`
-    };
-  }
-  return { gradoNum: '', nivel: '', gradoCompleto: grupo.grado };
-};
+// Import refactored components
+import {
+  STEPS,
+  MATERIALES_DISPONIBLES,
+  DURACIONES,
+  STORAGE_KEYS,
+  parseGradoFromGrupo,
+  getInitialFormData,
+  getMissingFields,
+  calculateSectionProgress,
+  type FormData,
+  type ViewMode
+} from '@/components/profesor/GenerarClase';
+import { WizardProgress } from '@/components/profesor/GenerarClase/WizardProgress';
+import { CompetenciaSection } from '@/components/profesor/GenerarClase/CompetenciaSection';
+import { DraftRestoreDialog } from '@/components/profesor/GenerarClase/DraftRestoreDialog';
+import { SelectionMode } from '@/components/profesor/GenerarClase/SelectionMode';
 
 export default function GenerarClase() {
   const navigate = useNavigate();
