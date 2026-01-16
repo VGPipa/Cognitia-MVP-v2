@@ -136,7 +136,7 @@ export const getMissingFields = (
 // Get initial form state
 export const getInitialFormData = (): FormData => ({
   fecha: '',
-  duracion: 55,
+  duracion: 90, // 2 horas pedagógicas (default)
   areaAcademica: '',
   competencias: [],
   capacidadesPorCompetencia: {},

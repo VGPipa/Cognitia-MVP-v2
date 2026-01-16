@@ -47,7 +47,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   STEPS,
   MATERIALES_DISPONIBLES,
-  DURACIONES,
+  HORAS_PEDAGOGICAS,
   STORAGE_KEYS,
   parseGradoFromGrupo,
   getInitialFormData,
@@ -1121,23 +1121,30 @@ export default function GenerarClase() {
                       )}
                     </div>
 
-                    {/* Duración */}
+                    {/* Duración - Horas Pedagógicas */}
                     <div className="space-y-2">
                       <Label>Duración de la sesión *</Label>
-                      <Select 
-                        value={String(formData.duracion)} 
-                        onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
-                        disabled={isClaseCompletada}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DURACIONES.map(d => (
-                            <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-3">
+                        <Select 
+                          value={String(formData.duracion)} 
+                          onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
+                          disabled={isClaseCompletada}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {HORAS_PEDAGOGICAS.map(hp => (
+                              <SelectItem key={hp.minutos} value={String(hp.minutos)}>
+                                {hp.horas} {hp.horas === 1 ? 'hora pedagógica' : 'horas pedagógicas'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Badge variant="secondary" className="text-sm whitespace-nowrap">
+                          {formData.duracion} min
+                        </Badge>
+                      </div>
                     </div>
 
                     {/* Grupo - siempre visible */}

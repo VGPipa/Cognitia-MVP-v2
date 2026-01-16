@@ -58,9 +58,9 @@ export interface MaterialDisponible {
   nombre: string;
 }
 
-export interface DuracionOption {
-  value: number;
-  label: string;
+export interface HoraPedagogicaOption {
+  horas: number;
+  minutos: number;
 }
 
 export type ViewMode = 'selection' | 'wizard';
