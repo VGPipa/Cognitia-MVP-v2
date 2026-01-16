@@ -516,6 +516,17 @@ export default function GenerarClase() {
 
   // Handler: Generate desempeños for a specific competencia
   const handleGenerarDesempenoParaCompetencia = async (competenciaId: string) => {
+    const temaNombre = formData.temaPersonalizado?.trim() || temaData?.nombre?.trim() || '';
+    
+    if (!temaNombre) {
+      toast({
+        title: 'Tema requerido',
+        description: 'Ingresa o selecciona un tema antes de generar desempeños',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     const capacidadesDeCompetencia = formData.capacidadesPorCompetencia[competenciaId] || [];
     
     if (capacidadesDeCompetencia.length === 0) {
@@ -530,7 +541,6 @@ export default function GenerarClase() {
     setGeneratingForCompetencia(competenciaId);
     
     try {
-      const temaNombre = formData.temaPersonalizado || temaData?.nombre || '';
       const areaName = areas.find(a => a.id === formData.areaAcademica)?.nombre || '';
       const competenciaData = competenciasCNEB.find(c => c.id === competenciaId);
       const capacidadesNames = capacidadesDeCompetencia
