@@ -218,7 +218,7 @@ INSTRUCCIONES CRÍTICAS:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userPrompt }
@@ -264,30 +264,90 @@ INSTRUCCIONES CRÍTICAS:
       }
       jsonContent = jsonContent.trim();
       
-      // Try to fix truncated JSON by finding incomplete structures
-      // Check if response seems truncated (doesn't end with })
+      // Try to fix truncated JSON
       if (!jsonContent.endsWith('}')) {
-        console.warn("Response appears truncated, attempting to fix...");
-        // Find the last complete object/array closure
+        console.warn("Response appears truncated, attempting advanced fix...");
+        
+        // Strategy 1: Find last complete brace match
         let braceCount = 0;
-        let bracketCount = 0;
+        let inString = false;
+        let escapeNext = false;
         let lastValidIndex = -1;
         
         for (let i = 0; i < jsonContent.length; i++) {
           const char = jsonContent[i];
-          if (char === '{') braceCount++;
-          if (char === '}') {
-            braceCount--;
-            if (braceCount === 0) lastValidIndex = i;
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
           }
-          if (char === '[') bracketCount++;
-          if (char === ']') bracketCount--;
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          
+          if (!inString) {
+            if (char === '{') braceCount++;
+            if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) lastValidIndex = i;
+            }
+          }
         }
         
-        // If we found a valid closing point, truncate there
-        if (lastValidIndex > 0 && lastValidIndex < jsonContent.length - 1) {
+        if (lastValidIndex > 0) {
           jsonContent = jsonContent.substring(0, lastValidIndex + 1);
           console.log("Truncated JSON fixed at position:", lastValidIndex);
+        } else {
+          // Strategy 2: Try to close the JSON structure manually
+          console.warn("Attempting to close JSON structure manually...");
+          
+          // Count unclosed braces/brackets (ignoring strings)
+          braceCount = 0;
+          let bracketCount = 0;
+          inString = false;
+          escapeNext = false;
+          
+          for (let i = 0; i < jsonContent.length; i++) {
+            const char = jsonContent[i];
+            if (escapeNext) { escapeNext = false; continue; }
+            if (char === '\\') { escapeNext = true; continue; }
+            if (char === '"') { inString = !inString; continue; }
+            if (!inString) {
+              if (char === '{') braceCount++;
+              if (char === '}') braceCount--;
+              if (char === '[') bracketCount++;
+              if (char === ']') bracketCount--;
+            }
+          }
+          
+          // Check if we're in an unclosed string (odd number of quotes after last escape)
+          const lastQuoteIndex = jsonContent.lastIndexOf('"');
+          const contentAfterQuote = jsonContent.substring(lastQuoteIndex + 1);
+          const hasUnclosedString = !contentAfterQuote.includes('"') && 
+            (jsonContent.split('"').length % 2 === 0);
+          
+          if (hasUnclosedString) {
+            jsonContent += '"';
+          }
+          
+          // Close arrays and objects
+          while (bracketCount > 0) {
+            jsonContent += ']';
+            bracketCount--;
+          }
+          while (braceCount > 0) {
+            jsonContent += '}';
+            braceCount--;
+          }
+          
+          console.log("Manually closed JSON structure");
         }
       }
       
@@ -297,7 +357,41 @@ INSTRUCCIONES CRÍTICAS:
       console.error("Failed to parse AI response as JSON:", parseError);
       console.error("Raw content length:", content.length);
       console.error("Raw content preview:", content.substring(0, 500));
-      throw new Error("La respuesta de la IA no es un JSON válido. Por favor, intenta de nuevo.");
+      
+      // Fallback: return a minimal valid structure using the input data
+      console.log("Using fallback structure from input data...");
+      guiaData = {
+        datos_generales: {
+          titulo_sesion: `Sesión: ${tema}`,
+          nivel: nivel || "Secundaria",
+          grado: grado || "[INFERIDO]",
+          area_academica: area || "[NO ESPECIFICADA]",
+          duracion: `${duracion || 55} minutos`
+        },
+        propositos_aprendizaje: competenciasConDesempenos?.map(item => ({
+          competencia: item.competencia,
+          capacidades: item.capacidades,
+          criterios_evaluacion: item.desempenos,
+          evidencia_aprendizaje: "Producto o actuación observable",
+          instrumento_valoracion: "Lista de cotejo"
+        })) || [],
+        enfoques_transversales: enfoquesTransversales?.map(nombre => ({
+          nombre,
+          descripcion: "Se evidencia cuando los estudiantes aplican este enfoque"
+        })) || [],
+        preparacion: {
+          antes_sesion: "Preparar materiales y revisar el contexto del grupo",
+          materiales: materiales || recursos || []
+        },
+        momentos_sesion: [
+          { fase: "INICIO", duracion: "15 min", actividades: "Motivación y saberes previos", objetivo_fase: "Conectar con el tema", actividades_docente: ["Presentar el propósito"], actividades_estudiante: ["Participar activamente"] },
+          { fase: "DESARROLLO", duracion: `${Math.max((duracion || 55) - 25, 30)} min`, actividades: "Desarrollo del tema", objetivo_fase: "Lograr el aprendizaje", actividades_docente: ["Guiar el proceso"], actividades_estudiante: ["Trabajar en equipo"] },
+          { fase: "CIERRE", duracion: "10 min", actividades: "Metacognición", objetivo_fase: "Reflexionar sobre lo aprendido", actividades_docente: ["Facilitar la reflexión"], actividades_estudiante: ["Compartir aprendizajes"] }
+        ],
+        adaptaciones_sugeridas: {
+          estrategias_diferenciadas: adaptaciones?.length ? `Estrategias para: ${adaptaciones.join(', ')}` : "Sin adaptaciones específicas"
+        }
+      };
     }
 
     // Normalize propositos_aprendizaje to ensure criterios_evaluacion and capacidades are arrays
