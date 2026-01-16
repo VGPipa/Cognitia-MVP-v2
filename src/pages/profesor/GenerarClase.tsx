@@ -20,7 +20,7 @@ import { useCompetenciasCNEB } from '@/hooks/useCompetenciasCNEB';
 import { useCapacidadesCNEB } from '@/hooks/useCapacidadesCNEB';
 import { useEnfoquesTransversales } from '@/hooks/useEnfoquesTransversales';
 import { useTiposAdaptacion } from '@/hooks/useTiposAdaptacion';
-import { useAutosave } from '@/hooks/useAutosave';
+
 import { supabase } from '@/integrations/supabase/client';
 import { generateGuiaClase, type GuiaClaseData } from '@/lib/ai/generate';
 import {
@@ -60,7 +60,7 @@ import {
 } from '@/components/profesor/GenerarClase';
 import { WizardProgress } from '@/components/profesor/GenerarClase/WizardProgress';
 import { CompetenciaSection } from '@/components/profesor/GenerarClase/CompetenciaSection';
-import { DraftRestoreDialog } from '@/components/profesor/GenerarClase/DraftRestoreDialog';
+
 import { SelectionMode } from '@/components/profesor/GenerarClase/SelectionMode';
 import { GuiaClaseViewer } from '@/components/profesor/GenerarClase/GuiaClaseViewer';
 import { ValidacionStep } from '@/components/profesor/GenerarClase/ValidacionStep';
@@ -105,9 +105,6 @@ export default function GenerarClase() {
   // Form state - initialized using utility function
   const [formData, setFormData] = useState<FormData>(getInitialFormData());
   
-  // Draft restore dialog state
-  const [showDraftDialog, setShowDraftDialog] = useState(false);
-  const [draftDialogShown, setDraftDialogShown] = useState(false);
   
   // State for tracking which competencia is generating desempeños
   const [generatingForCompetencia, setGeneratingForCompetencia] = useState<string | null>(null);
@@ -138,31 +135,16 @@ export default function GenerarClase() {
     [formData, isExtraordinaria, temaData, grupoData]
   );
 
-  // Autosave hook - only active in wizard mode step 1
-  const {
-    lastSaved,
-    isSaving,
-    hasDraft,
-    draftTimestamp,
-    restoreDraft,
-    clearDraft,
-    dismissDraft
-  } = useAutosave({
-    data: formData,
-    storageKey: STORAGE_KEYS.DRAFT_FORM,
-    timestampKey: STORAGE_KEYS.DRAFT_TIMESTAMP,
-    dismissedKey: STORAGE_KEYS.DRAFT_DISMISSED,
-    interval: 30000, // 30 seconds
-    enabled: viewMode === 'wizard' && currentStep === 1 && !isClaseCompletada
-  });
-
-  // Show draft dialog on mount if draft exists (only once per session)
+  // One-time cleanup of old draft localStorage keys
   useEffect(() => {
-    if (hasDraft && viewMode === 'wizard' && !claseId && !draftDialogShown) {
-      setShowDraftDialog(true);
-      setDraftDialogShown(true);
+    try {
+      localStorage.removeItem('generar_clase_draft_form');
+      localStorage.removeItem('generar_clase_draft_timestamp');
+      localStorage.removeItem('generar_clase_draft_dismissed');
+    } catch (e) {
+      // Ignore errors
     }
-  }, [hasDraft, viewMode, claseId, draftDialogShown]);
+  }, []);
 
   // Computed data for selection mode
   const clasesEnProceso = useMemo(() => {
@@ -1095,28 +1077,8 @@ export default function GenerarClase() {
         <WizardProgress 
           currentStep={currentStep}
           sectionProgress={currentStep === 1 ? sectionProgress : undefined}
-          lastSaved={lastSaved}
-          isSaving={isSaving}
         />
 
-        {/* Draft Restore Dialog */}
-        <DraftRestoreDialog
-          open={showDraftDialog}
-          onOpenChange={setShowDraftDialog}
-          onRestore={() => {
-            const restored = restoreDraft();
-            if (restored) {
-              setFormData(restored);
-              toast({ title: 'Borrador restaurado', description: 'Se han recuperado los datos guardados' });
-            }
-            setShowDraftDialog(false);
-          }}
-          onDiscard={() => {
-            dismissDraft();
-            setShowDraftDialog(false);
-          }}
-          draftTimestamp={draftTimestamp}
-        />
 
         {/* Step content */}
         <Card>
