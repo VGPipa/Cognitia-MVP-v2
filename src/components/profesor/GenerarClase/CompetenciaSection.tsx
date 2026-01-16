@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GraduationCap, Wand2, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { GraduationCap, Wand2, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CompetenciaSectionProps {
@@ -137,7 +139,7 @@ export function CompetenciaSection({
             </Button>
           </div>
           
-          {/* Capacidades */}
+          {/* Capacidades - Nuevo diseño con Popover */}
           <div className="space-y-2">
             <Label className="text-sm flex items-center gap-2">
               Capacidades *
@@ -145,23 +147,64 @@ export function CompetenciaSection({
                 <AlertCircle className="w-3 h-3 text-warning" />
               )}
             </Label>
-            <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-background min-h-[48px]">
-              {capacidades.length > 0 ? (
-                capacidades.map(cap => (
+            <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-background min-h-[48px] items-center">
+              {/* Mostrar capacidades seleccionadas */}
+              {selectedCapacidades.map(capId => {
+                const cap = capacidades.find(c => c.id === capId);
+                if (!cap) return null;
+                return (
                   <Badge
-                    key={cap.id}
-                    variant={selectedCapacidades.includes(cap.id) ? 'default' : 'outline'}
-                    className={cn(
-                      "text-xs transition-all duration-200",
-                      isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer hover:scale-105",
-                      selectedCapacidades.includes(cap.id) && "shadow-sm"
-                    )}
-                    onClick={() => !isClaseCompletada && onToggleCapacidad(cap.id)}
+                    key={capId}
+                    variant="default"
+                    className="text-xs flex items-center gap-1 pr-1"
                   >
-                    {cap.nombre}
+                    <span className="max-w-[200px] truncate">{cap.nombre}</span>
+                    {!isClaseCompletada && (
+                      <button
+                        type="button"
+                        onClick={() => onToggleCapacidad(capId)}
+                        className="ml-1 hover:bg-primary-foreground/20 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </Badge>
-                ))
-              ) : (
+                );
+              })}
+              
+              {/* Botón para agregar capacidades */}
+              {!isClaseCompletada && capacidades.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                      <Plus className="w-3 h-3" />
+                      Agregar
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2" align="start">
+                    <p className="text-sm font-medium mb-2 px-2">Seleccionar capacidades</p>
+                    <ScrollArea className="max-h-[200px]">
+                      <div className="space-y-1">
+                        {capacidades.filter(cap => !selectedCapacidades.includes(cap.id)).map(cap => (
+                          <button
+                            key={cap.id}
+                            type="button"
+                            onClick={() => onToggleCapacidad(cap.id)}
+                            className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                          >
+                            {cap.nombre}
+                          </button>
+                        ))}
+                        {capacidades.filter(cap => !selectedCapacidades.includes(cap.id)).length === 0 && (
+                          <p className="text-xs text-muted-foreground p-2">Todas las capacidades ya están seleccionadas</p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              )}
+              
+              {capacidades.length === 0 && (
                 <span className="text-xs text-muted-foreground">No hay capacidades disponibles</span>
               )}
             </div>

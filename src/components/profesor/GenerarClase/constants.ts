@@ -9,11 +9,22 @@ export const STEPS: WizardStep[] = [
 ];
 
 export const MATERIALES_DISPONIBLES: MaterialDisponible[] = [
-  { id: 'computadoras', nombre: 'Computadoras' },
+  { id: 'pizarra', nombre: 'Pizarra' },
   { id: 'proyector', nombre: 'Proyector / TV' },
-  { id: 'patio', nombre: 'Patio / espacio libre' },
+  { id: 'computadoras', nombre: 'Computadoras' },
   { id: 'material_impreso', nombre: 'Material impreso' },
-  { id: 'celular', nombre: 'Computador / Celular' }
+  { id: 'patio', nombre: 'Patio / Espacio libre' },
+  { id: 'celular', nombre: 'Celular / Tablet' }
+];
+
+// Adaptaciones NEE prioritarias - nombres exactos de la base de datos
+export const ADAPTACIONES_PRIORITARIAS = [
+  'Altas capacidades',
+  'TDA',
+  'TDAH',
+  'TEA',
+  'Dislexia',
+  'Síndrome de Down'
 ];
 
 // Horas pedagógicas (1 hora = 45 minutos)
