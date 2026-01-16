@@ -105,6 +105,7 @@ export default function GenerarClase() {
   
   // Draft restore dialog state
   const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftDialogShown, setDraftDialogShown] = useState(false);
   
   // State for tracking which competencia is generating desempeños
   const [generatingForCompetencia, setGeneratingForCompetencia] = useState<string | null>(null);
@@ -151,12 +152,13 @@ export default function GenerarClase() {
     enabled: viewMode === 'wizard' && currentStep === 1 && !isClaseCompletada
   });
 
-  // Show draft dialog on mount if draft exists
+  // Show draft dialog on mount if draft exists (only once per session)
   useEffect(() => {
-    if (hasDraft && viewMode === 'wizard' && !claseId) {
+    if (hasDraft && viewMode === 'wizard' && !claseId && !draftDialogShown) {
       setShowDraftDialog(true);
+      setDraftDialogShown(true);
     }
-  }, [hasDraft, viewMode, claseId]);
+  }, [hasDraft, viewMode, claseId, draftDialogShown]);
 
   // Computed data for selection mode
   const clasesEnProceso = useMemo(() => {
