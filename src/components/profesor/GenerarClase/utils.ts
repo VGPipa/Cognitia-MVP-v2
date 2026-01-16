@@ -56,7 +56,7 @@ export const calculateSectionProgress = (
   const hasDesempenos = formData.competencias.some(
     compId => (formData.desempenosPorCompetencia[compId] || []).some(d => d.trim() !== '')
   );
-  const hasEnfoque = !!formData.enfoqueTransversal;
+  const hasEnfoque = formData.enfoquesTransversales.length > 0;
   
   const propositosFields = [hasCompetencias, hasCapacidades, hasDesempenos, hasEnfoque];
   const propositosCompleted = propositosFields.filter(Boolean).length;
@@ -127,7 +127,7 @@ export const getMissingFields = (
     compId => (formData.desempenosPorCompetencia[compId] || []).some(d => d.trim() !== '')
   );
   if (competenciasConDesempenos.length === 0) missing.push('Al menos un Desempeño por Competencia');
-  if (!formData.enfoqueTransversal) missing.push('Enfoque Transversal');
+  if (formData.enfoquesTransversales.length === 0) missing.push('Al menos un Enfoque Transversal');
   if (formData.materiales.length === 0) missing.push('Al menos un Material');
   
   return missing;
@@ -141,7 +141,7 @@ export const getInitialFormData = (): FormData => ({
   competencias: [],
   capacidadesPorCompetencia: {},
   desempenosPorCompetencia: {},
-  enfoqueTransversal: '',
+  enfoquesTransversales: [],
   materiales: [],
   materialOtro: '',
   adaptaciones: [],

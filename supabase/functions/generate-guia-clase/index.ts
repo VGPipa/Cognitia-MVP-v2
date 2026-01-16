@@ -90,7 +90,7 @@ interface GenerateGuiaRequest {
   area?: string;
   // Nueva estructura de competencias con desempeños
   competenciasConDesempenos?: CompetenciaConDesempenos[];
-  enfoqueTransversal?: string;
+  enfoquesTransversales?: string[];
   adaptaciones?: string[];
   adaptacionesPersonalizadas?: string;
   materiales?: string[];
@@ -114,7 +114,7 @@ serve(async (req) => {
       duracion,
       area,
       competenciasConDesempenos,
-      enfoqueTransversal,
+      enfoquesTransversales,
       adaptaciones,
       adaptacionesPersonalizadas,
       materiales
@@ -127,7 +127,7 @@ serve(async (req) => {
     console.log("Grado:", grado);
     console.log("Duración:", duracion);
     console.log("CompetenciasConDesempenos:", JSON.stringify(competenciasConDesempenos, null, 2));
-    console.log("Enfoque:", enfoqueTransversal);
+    console.log("Enfoques:", enfoquesTransversales);
     console.log("Adaptaciones:", adaptaciones);
     console.log("Materiales:", materiales);
 
@@ -174,7 +174,11 @@ PROPÓSITOS DE APRENDIZAJE:
 
 ${competenciasSection}
 
-Enfoque transversal: ${enfoqueTransversal || '[INFERIR el más apropiado]'}
+Enfoques transversales: ${
+  Array.isArray(enfoquesTransversales) && enfoquesTransversales.length > 0
+    ? enfoquesTransversales.join(', ')
+    : '[INFERIR los más apropiados]'
+}
 
 MATERIALES DISPONIBLES:
 ${materialesText}
@@ -295,12 +299,17 @@ INSTRUCCIONES CRÍTICAS:
         duracion: guiaData.datos_generales?.duracion || `${duracion || 55} minutos`
       },
       propositos_aprendizaje: normalizedPropositos.length > 0 ? normalizedPropositos : defaultPropositos,
-      enfoques_transversales: guiaData.enfoques_transversales || [
-        {
-          nombre: enfoqueTransversal || "Enfoque de Búsqueda de la Excelencia",
-          descripcion: "Se evidencia cuando los estudiantes se esfuerzan por mejorar continuamente"
-        }
-      ],
+      enfoques_transversales: guiaData.enfoques_transversales || (
+        Array.isArray(enfoquesTransversales) && enfoquesTransversales.length > 0
+          ? enfoquesTransversales.map(nombre => ({
+              nombre,
+              descripcion: "Se evidencia cuando los estudiantes aplican este enfoque en sus actividades"
+            }))
+          : [{
+              nombre: "Enfoque de Búsqueda de la Excelencia",
+              descripcion: "Se evidencia cuando los estudiantes se esfuerzan por mejorar continuamente"
+            }]
+      ),
       preparacion: guiaData.preparacion || {
         antes_sesion: "Preparar materiales y revisar el contexto del grupo",
         materiales: materiales || recursos || []

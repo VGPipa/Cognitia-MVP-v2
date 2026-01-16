@@ -449,7 +449,7 @@ export default function GenerarClase() {
       competencias: [],
       capacidadesPorCompetencia: {},
       desempenosPorCompetencia: {},
-      enfoqueTransversal: '',
+      enfoquesTransversales: [],
       materiales: [],
       materialOtro: '',
       adaptaciones: [],
@@ -744,7 +744,9 @@ export default function GenerarClase() {
               desempenos: desempenos.filter(d => d.trim() !== '')
             };
           }),
-          enfoqueTransversal: enfoques.find(e => e.id === formData.enfoqueTransversal)?.nombre,
+          enfoquesTransversales: formData.enfoquesTransversales
+            .map(id => enfoques.find(e => e.id === id)?.nombre)
+            .filter(Boolean) as string[],
           adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
           adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
           materiales: formData.materiales
@@ -1278,23 +1280,31 @@ export default function GenerarClase() {
                     </p>
                   )}
 
-                  {/* Enfoque Transversal */}
+                  {/* Enfoques Transversales - Selección Múltiple */}
                   <div className="space-y-2">
-                    <Label>Enfoque Transversal *</Label>
-                    <Select 
-                      value={formData.enfoqueTransversal} 
-                      onValueChange={(value) => setFormData({...formData, enfoqueTransversal: value})}
-                      disabled={isClaseCompletada}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un enfoque" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {enfoques.map(enfoque => (
-                          <SelectItem key={enfoque.id} value={enfoque.id}>{enfoque.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Enfoques Transversales * (selección múltiple)</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                      {enfoques.map(enfoque => {
+                        const isSelected = formData.enfoquesTransversales.includes(enfoque.id);
+                        return (
+                          <Badge
+                            key={enfoque.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={isClaseCompletada ? "cursor-not-allowed" : "cursor-pointer"}
+                            onClick={() => {
+                              if (!isClaseCompletada) {
+                                const newEnfoques = isSelected
+                                  ? formData.enfoquesTransversales.filter(id => id !== enfoque.id)
+                                  : [...formData.enfoquesTransversales, enfoque.id];
+                                setFormData({...formData, enfoquesTransversales: newEnfoques});
+                              }
+                            }}
+                          >
+                            {enfoque.nombre}
+                          </Badge>
+                        );
+                      })}
+                    </div>
                   </div>
                 </fieldset>
 
