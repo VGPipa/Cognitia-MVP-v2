@@ -44,6 +44,9 @@ export interface GuiaClaseData {
   }>;
   adaptaciones_sugeridas?: {
     estrategias_diferenciadas: string;
+    apoyo_adicional?: string[];
+    extension_avanzados?: string[];
+    recursos_apoyo?: string[];
   };
 }
 

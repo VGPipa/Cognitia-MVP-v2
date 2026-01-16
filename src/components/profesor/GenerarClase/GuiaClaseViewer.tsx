@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,8 +10,19 @@ import {
   Target,
   Users,
   GraduationCap,
-  Compass
+  Compass,
+  ChevronDown,
+  FileType,
+  HelpCircle,
+  Sparkles,
+  HeartHandshake
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { GuiaClaseData } from '@/lib/ai/generate';
 import { EditableText } from './EditableText';
 
@@ -64,6 +75,44 @@ export function GuiaClaseViewer({
     }
   }, [guia.datos_generales.titulo_sesion]);
 
+  const handleExportWord = useCallback(() => {
+    if (!contentRef.current) return;
+    
+    try {
+      const html = contentRef.current.innerHTML;
+      const filename = `guia-${guia.datos_generales.titulo_sesion.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50)}.doc`;
+      
+      const blob = new Blob([`
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word'
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Guía de Clase</title>
+          <style>
+            body { font-family: Arial, sans-serif; font-size: 12pt; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background-color: #f0f0f0; }
+          </style>
+        </head>
+        <body>${html}</body>
+        </html>
+      `], { type: 'application/msword' });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting Word:', error);
+    }
+  }, [guia.datos_generales.titulo_sesion]);
+
   // Helper to update nested guia data
   const updateGuia = useCallback((path: (string | number)[], value: any) => {
     if (!onGuiaChange || readOnly) return;
@@ -92,17 +141,35 @@ export function GuiaClaseViewer({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExportPDF}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Exportar PDF
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="w-4 h-4" />
+                Exportar
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPDF} className="gap-2 cursor-pointer">
+                <FileText className="w-4 h-4" />
+                Exportar como PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportWord} className="gap-2 cursor-pointer">
+                <FileType className="w-4 h-4" />
+                Exportar como Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {/* Edit mode indicator */}
+      {canEdit && (
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
+          <Sparkles className="w-4 h-4" />
+          <span>Modo edición activo: Haz clic en los campos con borde punteado para editarlos</span>
+        </div>
+      )}
 
       {/* Main Content for PDF Export */}
       <div ref={contentRef} className="space-y-6 bg-background print:bg-white">
@@ -149,7 +216,7 @@ export function GuiaClaseViewer({
         </section>
 
         {/* II. PROPÓSITOS DE APRENDIZAJE */}
-        <section className="border border-border rounded-lg overflow-hidden">
+        <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-teal-400">
           <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
             <Target className="w-4 h-4" />
             <span className="font-semibold text-sm tracking-wide">II. PROPÓSITOS DE APRENDIZAJE</span>
@@ -183,7 +250,7 @@ export function GuiaClaseViewer({
                         <ul className="space-y-2">
                           {prop.criterios_evaluacion.map((criterio, j) => (
                             <li key={j} className="flex gap-2">
-                              <span className="text-primary font-bold shrink-0">•</span>
+                              <span className="text-teal-600 font-bold shrink-0">•</span>
                               <EditableText
                                 value={criterio}
                                 onChange={canEdit ? (v) => {
@@ -222,7 +289,7 @@ export function GuiaClaseViewer({
         </section>
 
         {/* ENFOQUES TRANSVERSALES */}
-        <section className="border border-border rounded-lg overflow-hidden">
+        <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-indigo-400">
           <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
             <Compass className="w-4 h-4" />
             <span className="font-semibold text-sm tracking-wide">ENFOQUES TRANSVERSALES</span>
@@ -259,7 +326,7 @@ export function GuiaClaseViewer({
         </section>
 
         {/* III. PREPARACIÓN DE LA SESIÓN */}
-        <section className="border border-border rounded-lg overflow-hidden">
+        <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-sky-400">
           <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
             <span className="font-semibold text-sm tracking-wide">III. PREPARACIÓN DE LA SESIÓN</span>
@@ -285,7 +352,7 @@ export function GuiaClaseViewer({
               <ul className="space-y-2">
                 {guia.preparacion.materiales.map((mat, i) => (
                   <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0"></span>
+                    <span className="w-2 h-2 rounded-full bg-sky-500 mt-1.5 shrink-0"></span>
                     <EditableText
                       value={mat}
                       onChange={canEdit ? (v) => {
@@ -446,21 +513,114 @@ export function GuiaClaseViewer({
           </div>
         </section>
 
-        {/* Adaptaciones Sugeridas */}
-        {guia.adaptaciones_sugeridas && guia.adaptaciones_sugeridas.estrategias_diferenciadas && (
-          <section className="border border-border rounded-lg overflow-hidden">
+        {/* Adaptaciones y Diferenciación Pedagógica */}
+        {guia.adaptaciones_sugeridas && (guia.adaptaciones_sugeridas.estrategias_diferenciadas || guia.adaptaciones_sugeridas.apoyo_adicional) && (
+          <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-rose-400">
             <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center gap-2">
               <Lightbulb className="w-4 h-4" />
-              <span className="font-semibold text-sm tracking-wide">ADAPTACIONES SUGERIDAS (NEE)</span>
+              <span className="font-semibold text-sm tracking-wide">ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA</span>
             </header>
-            <div className="p-5">
-              <div className="text-sm leading-relaxed">
-                <EditableText
-                  value={guia.adaptaciones_sugeridas.estrategias_diferenciadas}
-                  onChange={canEdit ? (v) => updateGuia(['adaptaciones_sugeridas', 'estrategias_diferenciadas'], v) : undefined}
-                  disabled={!canEdit}
-                  multiline
-                />
+            <div className="p-5 space-y-5">
+              {/* Main strategies (legacy field) */}
+              {guia.adaptaciones_sugeridas.estrategias_diferenciadas && (
+                <div className="text-sm leading-relaxed">
+                  <EditableText
+                    value={guia.adaptaciones_sugeridas.estrategias_diferenciadas}
+                    onChange={canEdit ? (v) => updateGuia(['adaptaciones_sugeridas', 'estrategias_diferenciadas'], v) : undefined}
+                    disabled={!canEdit}
+                    multiline
+                  />
+                </div>
+              )}
+
+              {/* New structured adaptations */}
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Para estudiantes que necesitan más apoyo */}
+                {guia.adaptaciones_sugeridas.apoyo_adicional && guia.adaptaciones_sugeridas.apoyo_adicional.length > 0 && (
+                  <div className="bg-rose-50/50 dark:bg-rose-950/20 rounded-lg p-4 border border-rose-200 dark:border-rose-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <HeartHandshake className="w-4 h-4 text-rose-600" />
+                      <h4 className="font-semibold text-sm text-rose-700 dark:text-rose-400">
+                        Apoyo Adicional
+                      </h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {guia.adaptaciones_sugeridas.apoyo_adicional.map((item, i) => (
+                        <li key={i} className="text-sm flex gap-2">
+                          <span className="text-rose-500 shrink-0">•</span>
+                          <EditableText
+                            value={item}
+                            onChange={canEdit ? (v) => {
+                              const newItems = [...(guia.adaptaciones_sugeridas?.apoyo_adicional || [])];
+                              newItems[i] = v;
+                              updateGuia(['adaptaciones_sugeridas', 'apoyo_adicional'], newItems);
+                            } : undefined}
+                            disabled={!canEdit}
+                            multiline
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Para estudiantes avanzados */}
+                {guia.adaptaciones_sugeridas.extension_avanzados && guia.adaptaciones_sugeridas.extension_avanzados.length > 0 && (
+                  <div className="bg-violet-50/50 dark:bg-violet-950/20 rounded-lg p-4 border border-violet-200 dark:border-violet-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-4 h-4 text-violet-600" />
+                      <h4 className="font-semibold text-sm text-violet-700 dark:text-violet-400">
+                        Extensión Avanzados
+                      </h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {guia.adaptaciones_sugeridas.extension_avanzados.map((item, i) => (
+                        <li key={i} className="text-sm flex gap-2">
+                          <span className="text-violet-500 shrink-0">•</span>
+                          <EditableText
+                            value={item}
+                            onChange={canEdit ? (v) => {
+                              const newItems = [...(guia.adaptaciones_sugeridas?.extension_avanzados || [])];
+                              newItems[i] = v;
+                              updateGuia(['adaptaciones_sugeridas', 'extension_avanzados'], newItems);
+                            } : undefined}
+                            disabled={!canEdit}
+                            multiline
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Recursos de apoyo */}
+                {guia.adaptaciones_sugeridas.recursos_apoyo && guia.adaptaciones_sugeridas.recursos_apoyo.length > 0 && (
+                  <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <HelpCircle className="w-4 h-4 text-amber-600" />
+                      <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400">
+                        Recursos de Apoyo
+                      </h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {guia.adaptaciones_sugeridas.recursos_apoyo.map((item, i) => (
+                        <li key={i} className="text-sm flex gap-2">
+                          <span className="text-amber-500 shrink-0">•</span>
+                          <EditableText
+                            value={item}
+                            onChange={canEdit ? (v) => {
+                              const newItems = [...(guia.adaptaciones_sugeridas?.recursos_apoyo || [])];
+                              newItems[i] = v;
+                              updateGuia(['adaptaciones_sugeridas', 'recursos_apoyo'], newItems);
+                            } : undefined}
+                            disabled={!canEdit}
+                            multiline
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </section>
