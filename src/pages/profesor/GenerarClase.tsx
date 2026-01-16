@@ -264,7 +264,7 @@ export default function GenerarClase() {
               setFormData(prev => ({
                 ...prev,
                 fecha: clase.fecha_programada || '',
-                duracion: clase.duracion_minutos || 55,
+                duracion: clase.duracion_minutos || 90,
                 contexto: clase.contexto || ''
               }));
 
@@ -334,7 +334,7 @@ export default function GenerarClase() {
           setFormData(prev => ({
             ...prev,
             fecha: clase.fecha_programada || '',
-            duracion: clase.duracion_minutos || 55,
+            duracion: clase.duracion_minutos || 90,
             contexto: clase.contexto || ''
           }));
 
@@ -411,7 +411,7 @@ export default function GenerarClase() {
     setFormData(prev => ({
       ...prev,
       fecha: clase.fecha_programada || '',
-      duracion: clase.duracion_minutos || 55,
+      duracion: clase.duracion_minutos || 90,
       contexto: clase.contexto || ''
     }));
     
@@ -444,7 +444,7 @@ export default function GenerarClase() {
     setClaseData(null);
     setFormData({
       fecha: new Date().toISOString().split('T')[0],
-      duracion: 55,
+      duracion: 90,
       areaAcademica: '',
       competencias: [],
       capacidadesPorCompetencia: {},
