@@ -92,7 +92,19 @@ const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia, una IA expe
     }
   ],
   "adaptaciones_sugeridas": {
-    "estrategias_diferenciadas": "String (estrategias específicas para los tipos de NEE indicados)"
+    "estrategias_diferenciadas": "String (descripción general de estrategias diferenciadas)",
+    "apoyo_adicional": [
+      "String - Estrategia para estudiantes que necesitan más apoyo 1",
+      "String - Estrategia para estudiantes que necesitan más apoyo 2"
+    ],
+    "extension_avanzados": [
+      "String - Actividad de extensión para estudiantes avanzados 1",
+      "String - Actividad de extensión para estudiantes avanzados 2"
+    ],
+    "recursos_apoyo": [
+      "String - Recurso de apoyo adicional 1",
+      "String - Recurso de apoyo adicional 2"
+    ]
   }
 }
 

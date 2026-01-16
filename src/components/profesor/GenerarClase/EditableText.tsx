@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Pencil, Check } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface EditableTextProps {
   value: string;
@@ -60,9 +66,13 @@ export function EditableText({
     }
   };
 
+  const isEditable = !disabled && onChange;
+
   if (isEditing) {
     const inputClassName = cn(
-      "w-full bg-white border border-primary/30 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all",
+      "w-full bg-white border-2 border-amber-400 rounded-md px-3 py-2 text-sm",
+      "focus:outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-500",
+      "shadow-sm transition-all",
       className
     );
 
@@ -98,20 +108,37 @@ export function EditableText({
     );
   }
 
+  if (!isEditable) {
+    return (
+      <span className={cn("inline-block", !value && "text-muted-foreground italic", className)}>
+        {value || placeholder}
+      </span>
+    );
+  }
+
   return (
-    <span
-      onClick={handleClick}
-      className={cn(
-        "inline-block transition-all rounded px-1 -mx-1",
-        !disabled && onChange && "cursor-pointer hover:bg-primary/5 group",
-        !value && "text-muted-foreground italic",
-        className
-      )}
-    >
-      {value || placeholder}
-      {!disabled && onChange && (
-        <Pencil className="inline-block w-3 h-3 ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
-      )}
-    </span>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            onClick={handleClick}
+            className={cn(
+              "inline-flex items-center gap-1.5 transition-all rounded-md px-2 py-0.5 -mx-1",
+              "border border-dashed border-slate-300 dark:border-slate-600",
+              "hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400",
+              "cursor-pointer group",
+              !value && "text-muted-foreground italic",
+              className
+            )}
+          >
+            <span className="flex-1">{value || placeholder}</span>
+            <Pencil className="w-3 h-3 text-amber-600 opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          Haz clic para editar
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

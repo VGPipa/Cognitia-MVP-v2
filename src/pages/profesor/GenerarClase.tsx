@@ -1449,6 +1449,8 @@ export default function GenerarClase() {
                     guia={guiaGenerada}
                     duracion={formData.duracion}
                     isLoaded={!!claseData?.id_guia_version_actual}
+                    onGuiaChange={setGuiaGenerada}
+                    readOnly={isClaseCompletada}
                   />
                 )}
               </div>
