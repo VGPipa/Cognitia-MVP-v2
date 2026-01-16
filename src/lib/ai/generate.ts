@@ -62,7 +62,7 @@ export interface GenerateGuiaClaseInput {
   area?: string;
   // CNEB fields - NEW STRUCTURE
   competenciasConDesempenos?: CompetenciaConDesempenos[];
-  enfoqueTransversal?: string;
+  enfoquesTransversales?: string[];
   adaptaciones?: string[];
   adaptacionesPersonalizadas?: string;
   materiales?: string[];
@@ -235,7 +235,7 @@ export async function generateGuiaClase(
     duracion?: number;
     area?: string;
     competenciasConDesempenos?: CompetenciaConDesempenos[];
-    enfoqueTransversal?: string;
+    enfoquesTransversales?: string[];
     adaptaciones?: string[];
     adaptacionesPersonalizadas?: string;
     materiales?: string[];
@@ -254,7 +254,7 @@ export async function generateGuiaClase(
         duracion: opciones?.duracion,
         area: opciones?.area,
         competenciasConDesempenos: opciones?.competenciasConDesempenos,
-        enfoqueTransversal: opciones?.enfoqueTransversal,
+        enfoquesTransversales: opciones?.enfoquesTransversales,
         adaptaciones: opciones?.adaptaciones,
         adaptacionesPersonalizadas: opciones?.adaptacionesPersonalizadas,
         materiales: opciones?.materiales

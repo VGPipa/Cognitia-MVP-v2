@@ -8,7 +8,7 @@ export interface FormData {
   competencias: string[];
   capacidadesPorCompetencia: Record<string, string[]>;
   desempenosPorCompetencia: Record<string, string[]>;
-  enfoqueTransversal: string;
+  enfoquesTransversales: string[];
   // Materiales
   materiales: string[];
   materialOtro: string;
