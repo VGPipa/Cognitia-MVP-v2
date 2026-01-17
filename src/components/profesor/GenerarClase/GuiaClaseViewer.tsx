@@ -535,12 +535,19 @@ export function GuiaClaseViewer({
             {guia.propositos_aprendizaje.map((prop, i) => (
               <div key={i} className="bg-card">
                 {/* Table Header */}
-                <div className="grid grid-cols-2 bg-slate-100 dark:bg-slate-800/50 text-sm">
+                {/* Table Header - 4 columns */}
+                <div className="grid grid-cols-4 bg-slate-100 dark:bg-slate-800/50 text-sm">
                   <div className="p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
-                    COMPETENCIAS / CAPACIDADES
+                    COMP. / CAPACIDADES
+                  </div>
+                  <div className="p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
+                    DESEMPEÑOS
+                  </div>
+                  <div className="p-3 font-semibold text-slate-700 dark:text-slate-300 border-r border-border">
+                    EVIDENCIA
                   </div>
                   <div className="p-3 font-semibold text-slate-700 dark:text-slate-300">
-                    DESEMPEÑOS
+                    INSTRUMENTO
                   </div>
                 </div>
                 
@@ -549,8 +556,8 @@ export function GuiaClaseViewer({
                   {prop.competencia}
                 </div>
                 
-                {/* Capacidades left, Desempeños right */}
-                <div className="grid grid-cols-2 border-t border-border">
+                {/* 4 columns: Capacidades, Desempeños, Evidencia, Instrumento */}
+                <div className="grid grid-cols-4 border-t border-border">
                   <div className="p-3 border-r border-border">
                     <ul className="space-y-2">
                       {prop.capacidades && prop.capacidades.length > 0 ? (
@@ -561,11 +568,11 @@ export function GuiaClaseViewer({
                           </li>
                         ))
                       ) : (
-                        <li className="text-sm text-muted-foreground italic">Sin capacidades definidas</li>
+                        <li className="text-sm text-muted-foreground italic">Sin capacidades</li>
                       )}
                     </ul>
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 border-r border-border">
                     <ul className="space-y-2">
                       {Array.isArray(prop.criterios_evaluacion) ? (
                         prop.criterios_evaluacion.map((criterio, j) => (
@@ -589,14 +596,7 @@ export function GuiaClaseViewer({
                       )}
                     </ul>
                   </div>
-                </div>
-                
-                {/* Evidencia e Instrumento row */}
-                <div className="grid grid-cols-2 border-t border-border bg-slate-50/50 dark:bg-slate-800/20">
                   <div className="p-3 border-r border-border">
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold block mb-1">
-                      Evidencia de Aprendizaje
-                    </span>
                     <div className="text-sm">
                       <EditableText
                         value={prop.evidencia_aprendizaje}
@@ -608,9 +608,6 @@ export function GuiaClaseViewer({
                     </div>
                   </div>
                   <div className="p-3">
-                    <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold block mb-1">
-                      Instrumento de valoración
-                    </span>
                     <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800">
                       {prop.instrumento_valoracion}
                     </Badge>
