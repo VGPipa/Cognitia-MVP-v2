@@ -158,22 +158,21 @@ export function CompetenciaSection({
                       Agregar
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-2" align="start">
-                    
+                  <PopoverContent className="w-80 p-0" align="start">
                     <ScrollArea className="max-h-[200px]">
-                      <div className="space-y-1">
+                      <div className="divide-y divide-border/50">
                         {capacidades.filter(cap => !selectedCapacidades.includes(cap.id)).map(cap => (
                           <button
                             key={cap.id}
                             type="button"
                             onClick={() => onToggleCapacidad(cap.id)}
-                            className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                            className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted/70 transition-colors first:rounded-t last:rounded-b"
                           >
                             {cap.nombre}
                           </button>
                         ))}
                         {capacidades.filter(cap => !selectedCapacidades.includes(cap.id)).length === 0 && (
-                          <p className="text-xs text-muted-foreground p-2">Todas las capacidades ya están seleccionadas</p>
+                          <p className="text-xs text-muted-foreground p-3">Todas las capacidades ya están seleccionadas</p>
                         )}
                       </div>
                     </ScrollArea>
