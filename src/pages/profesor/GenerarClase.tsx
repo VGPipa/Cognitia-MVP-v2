@@ -1277,7 +1277,7 @@ export default function GenerarClase() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
-                            <p className="text-sm font-medium mb-2 px-2">Seleccionar competencias</p>
+                            
                             <ScrollArea className="max-h-[250px]">
                               <div className="space-y-1">
                                 {competenciasCNEB.filter(c => !formData.competencias.includes(c.id)).map(comp => (
@@ -1382,7 +1382,7 @@ export default function GenerarClase() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
-                            <p className="text-sm font-medium mb-2 px-2">Seleccionar enfoques transversales</p>
+                            
                             <ScrollArea className="max-h-[250px]">
                               <div className="space-y-1">
                                 {enfoques.filter(e => !formData.enfoquesTransversales.includes(e.id)).map(enfoque => (

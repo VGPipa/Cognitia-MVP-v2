@@ -159,7 +159,7 @@ export function CompetenciaSection({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-2" align="start">
-                    <p className="text-sm font-medium mb-2 px-2">Seleccionar capacidades</p>
+                    
                     <ScrollArea className="max-h-[200px]">
                       <div className="space-y-1">
                         {capacidades.filter(cap => !selectedCapacidades.includes(cap.id)).map(cap => (
