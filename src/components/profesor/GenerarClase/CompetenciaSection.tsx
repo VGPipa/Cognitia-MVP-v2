@@ -115,29 +115,6 @@ export function CompetenciaSection({
         isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="p-4 pt-0 space-y-4 animate-fade-in">
-          {/* Generate button */}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onGenerarDesempenos}
-              disabled={selectedCapacidades.length === 0 || isGenerating || isClaseCompletada}
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generando...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-4 h-4" />
-                  Generar Desempeños
-                </>
-              )}
-            </Button>
-          </div>
           
           {/* Capacidades - Nuevo diseño con Popover */}
           <div className="space-y-2">
@@ -212,12 +189,37 @@ export function CompetenciaSection({
           
           {/* Desempeños */}
           <div className="space-y-2">
-            <Label className="text-sm flex items-center gap-2">
-              Desempeños *
-              {hasCapacidades && !hasDesempenos && (
-                <AlertCircle className="w-3 h-3 text-warning" />
+            <div className="flex items-center justify-between">
+              <Label className="text-sm flex items-center gap-2">
+                Desempeños *
+                {hasCapacidades && !hasDesempenos && (
+                  <AlertCircle className="w-3 h-3 text-warning" />
+                )}
+              </Label>
+              
+              {!isClaseCompletada && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onGenerarDesempenos}
+                  disabled={selectedCapacidades.length === 0 || isGenerating}
+                  className="h-6 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Generando...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-3 h-3" />
+                      Generar
+                    </>
+                  )}
+                </Button>
               )}
-            </Label>
+            </div>
             
             {isGenerating ? (
               <div className="space-y-3">
