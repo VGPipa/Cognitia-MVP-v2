@@ -58,6 +58,18 @@ export function GuiaClaseViewer({
     if (!contentRef.current) return;
     
     try {
+      // Guardar estado actual de edición
+      const previousEditingSections = { ...editingSections };
+      
+      // Desactivar todos los modos de edición
+      setEditingSections({});
+      
+      // Añadir clase para ocultar elementos de UI
+      contentRef.current.classList.add('pdf-export-mode');
+      
+      // Esperar a que React actualice el DOM
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const html2pdf = (await import('html2pdf.js')).default;
       
       const element = contentRef.current;
@@ -81,10 +93,15 @@ export function GuiaClaseViewer({
         })
         .from(element)
         .save();
+      
+      // Restaurar estado y remover clase
+      contentRef.current.classList.remove('pdf-export-mode');
+      setEditingSections(previousEditingSections);
     } catch (error) {
       console.error('Error exporting PDF:', error);
+      contentRef.current?.classList.remove('pdf-export-mode');
     }
-  }, [guia.datos_generales.titulo_sesion]);
+  }, [guia.datos_generales.titulo_sesion, editingSections]);
 
   const handleExportWord = useCallback(async () => {
     try {

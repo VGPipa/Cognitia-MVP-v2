@@ -187,3 +187,22 @@
     50% { opacity: 0.7; }
   }
 }
+
+/* PDF Export Mode - Hide UI elements during export */
+.pdf-export-mode button,
+.pdf-export-mode [data-export-hide="true"] {
+  display: none !important;
+}
+
+.pdf-export-mode .border-dashed {
+  border-style: solid !important;
+  border-color: transparent !important;
+}
+
+.pdf-export-mode .bg-amber-50 {
+  background-color: transparent !important;
+}
+
+.pdf-export-mode .border-amber-400 {
+  border-color: transparent !important;
+}

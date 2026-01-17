@@ -1276,22 +1276,21 @@ export default function GenerarClase() {
                               Agregar
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80 p-2" align="start">
-                            
+                          <PopoverContent className="w-80 p-0" align="start">
                             <ScrollArea className="max-h-[250px]">
-                              <div className="space-y-1">
+                              <div className="divide-y divide-border/50">
                                 {competenciasCNEB.filter(c => !formData.competencias.includes(c.id)).map(comp => (
                                   <button
                                     key={comp.id}
                                     type="button"
                                     onClick={() => toggleCompetencia(comp.id)}
-                                    className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                                    className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted/70 transition-colors first:rounded-t last:rounded-b"
                                   >
                                     {comp.nombre}
                                   </button>
                                 ))}
                                 {competenciasCNEB.filter(c => !formData.competencias.includes(c.id)).length === 0 && (
-                                  <p className="text-xs text-muted-foreground p-2">Todas las competencias ya están seleccionadas</p>
+                                  <p className="text-xs text-muted-foreground p-3">Todas las competencias ya están seleccionadas</p>
                                 )}
                               </div>
                             </ScrollArea>
@@ -1381,10 +1380,9 @@ export default function GenerarClase() {
                               Agregar
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80 p-2" align="start">
-                            
+                          <PopoverContent className="w-80 p-0" align="start">
                             <ScrollArea className="max-h-[250px]">
-                              <div className="space-y-1">
+                              <div className="divide-y divide-border/50">
                                 {enfoques.filter(e => !formData.enfoquesTransversales.includes(e.id)).map(enfoque => (
                                   <button
                                     key={enfoque.id}
@@ -1395,13 +1393,13 @@ export default function GenerarClase() {
                                         enfoquesTransversales: [...formData.enfoquesTransversales, enfoque.id]
                                       });
                                     }}
-                                    className="w-full text-left p-2 text-sm rounded hover:bg-muted transition-colors"
+                                    className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted/70 transition-colors first:rounded-t last:rounded-b"
                                   >
                                     {enfoque.nombre}
                                   </button>
                                 ))}
                                 {enfoques.filter(e => !formData.enfoquesTransversales.includes(e.id)).length === 0 && (
-                                  <p className="text-xs text-muted-foreground p-2">Todos los enfoques ya están seleccionados</p>
+                                  <p className="text-xs text-muted-foreground p-3">Todos los enfoques ya están seleccionados</p>
                                 )}
                               </div>
                             </ScrollArea>
