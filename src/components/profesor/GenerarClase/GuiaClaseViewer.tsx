@@ -774,7 +774,7 @@ export function GuiaClaseViewer({
           </div>
         </section>
 
-        {/* IV. SITUACIÓN SIGNIFICATIVA - Now supports both string and object format */}
+        {/* IV. SITUACIÓN SIGNIFICATIVA - Siempre párrafo narrativo único */}
         {guia.situacion_significativa && (
           <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-amber-500">
             <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
@@ -794,74 +794,20 @@ export function GuiaClaseViewer({
               )}
             </header>
             <div className="p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10">
-              {typeof guia.situacion_significativa === 'string' ? (
-                /* NEW: Single narrative paragraph format */
-                <div className="text-sm leading-relaxed italic bg-white/80 dark:bg-slate-900/50 rounded-lg p-5 border border-amber-200 dark:border-amber-800">
-                  <EditableText
-                    value={guia.situacion_significativa}
-                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa'], v) : undefined}
-                    disabled={!canEdit}
-                    sectionEditing={editingSections['situacion']}
-                    multiline
-                  />
-                </div>
-              ) : (
-                /* Legacy: Object with contexto/reto/producto */
-                <div className="space-y-4">
-                  {/* Contexto */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <BookOpen className="w-4 h-4" />
-                      Contexto
-                    </h4>
-                    <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-                      <EditableText
-                        value={guia.situacion_significativa.contexto}
-                        onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'contexto'], v) : undefined}
-                        disabled={!canEdit}
-                        sectionEditing={editingSections['situacion']}
-                        multiline
-                      />
-                    </div>
-                  </div>
-
-                  {/* Reto/Desafío */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Reto / Desafío
-                    </h4>
-                    <div className="bg-amber-100 dark:bg-amber-900/40 rounded-lg p-4 border-2 border-amber-300 dark:border-amber-700 text-center">
-                      <p className="font-semibold text-amber-900 dark:text-amber-100 text-lg">
-                        <EditableText
-                          value={guia.situacion_significativa.reto}
-                          onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'reto'], v) : undefined}
-                          disabled={!canEdit}
-                          sectionEditing={editingSections['situacion']}
-                          multiline
-                        />
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Producto */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <Layers className="w-4 h-4" />
-                      Producto
-                    </h4>
-                    <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-                      <EditableText
-                        value={guia.situacion_significativa.producto}
-                        onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'producto'], v) : undefined}
-                        disabled={!canEdit}
-                        sectionEditing={editingSections['situacion']}
-                        multiline
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Siempre tratamos como string - convertir legacy si viene */}
+              <div className="text-sm leading-relaxed italic bg-white/80 dark:bg-slate-900/50 rounded-lg p-5 border border-amber-200 dark:border-amber-800">
+                <EditableText
+                  value={
+                    typeof guia.situacion_significativa === 'string'
+                      ? guia.situacion_significativa
+                      : `${(guia.situacion_significativa as any).contexto || ''} ${(guia.situacion_significativa as any).reto || ''} ${(guia.situacion_significativa as any).producto || ''}`.trim()
+                  }
+                  onChange={canEdit ? (v) => updateGuia(['situacion_significativa'], v) : undefined}
+                  disabled={!canEdit}
+                  sectionEditing={editingSections['situacion']}
+                  multiline
+                />
+              </div>
             </div>
           </section>
         )}
@@ -926,62 +872,42 @@ export function GuiaClaseViewer({
                     </Badge>
                   </div>
                   
-                  {/* Phase Content */}
-                  <div className="p-4 space-y-4">
-                    {(() => {
-                      // Check for narrative content (new format)
-                      const hasNarrativa = 'narrativa_docente' in fase && 
-                        typeof (fase as any).narrativa_docente === 'string' && 
-                        (fase as any).narrativa_docente.trim().length > 0;
+                    {/* Phase Content - Solo formato narrativo */}
+                    <div className="p-4 space-y-4">
+                      {/* Organization label */}
+                      {'organizacion' in fase && (fase as any).organizacion && (
+                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                          <Users className="w-3.5 h-3.5" />
+                          {(fase as any).organizacion}
+                        </div>
+                      )}
                       
-                      // Check for legacy content with actual data (not empty arrays)
-                      const hasLegacyDocente = 'actividades_docente' in fase && 
-                        Array.isArray((fase as any).actividades_docente) && 
-                        (fase as any).actividades_docente.length > 0 &&
-                        (fase as any).actividades_docente.some((a: string) => a && a.trim().length > 0);
+                      {/* Methodology for DESARROLLO */}
+                      {'metodologia_activa' in fase && (fase as any).metodologia_activa && (
+                        <div className="bg-white/60 dark:bg-slate-900/40 rounded-lg p-3 border border-border/50">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Metodología: {(fase as any).metodologia_activa.nombre}
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                            {(fase as any).metodologia_activa.justificacion}
+                          </p>
+                        </div>
+                      )}
                       
-                      const hasLegacyEstudiante = 'actividades_estudiante' in fase && 
-                        Array.isArray((fase as any).actividades_estudiante) && 
-                        (fase as any).actividades_estudiante.length > 0 &&
-                        (fase as any).actividades_estudiante.some((a: string) => a && a.trim().length > 0);
-                      
-                      const hasLegacyActividades = 'actividades' in fase && 
-                        typeof fase.actividades === 'string' && 
-                        fase.actividades.trim().length > 0;
-                      
-                      const hasObjetivo = 'objetivo_fase' in fase && 
-                        typeof (fase as any).objetivo_fase === 'string' && 
-                        (fase as any).objetivo_fase.trim().length > 0;
-
-                      // Prefer narrative format
-                      if (hasNarrativa) {
-                        return (
-                          <div className="space-y-3">
-                            {/* Organization label if available */}
-                            {'organizacion' in fase && (fase as any).organizacion && (
-                              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                <Users className="w-3.5 h-3.5" />
-                                {(fase as any).organizacion}
-                              </div>
-                            )}
-                            
-                            {/* Methodology for DESARROLLO */}
-                            {'metodologia_activa' in fase && (fase as any).metodologia_activa && (
-                              <div className="bg-white/60 dark:bg-slate-900/40 rounded-lg p-3 border border-border/50 mb-3">
-                                <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  Metodología: {(fase as any).metodologia_activa.nombre}
-                                </div>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 italic">
-                                  {(fase as any).metodologia_activa.justificacion}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Main narrative text */}
+                      {/* Main narrative text - siempre, convertir legacy si viene */}
+                      {(() => {
+                        // Obtener narrativa: preferir narrativa_docente, si no hay, convertir legacy
+                        const narrativa = (fase as any).narrativa_docente || 
+                          ((fase as any).actividades_docente?.length > 0 
+                            ? (fase as any).actividades_docente.join('\n\n')
+                            : fase.actividades || '');
+                        
+                        if (narrativa && narrativa.trim()) {
+                          return (
                             <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2">
                               <EditableText
-                                value={(fase as any).narrativa_docente}
+                                value={narrativa}
                                 onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'narrativa_docente'], v) : undefined}
                                 disabled={!canEdit}
                                 sectionEditing={editingSections['momentos']}
@@ -989,115 +915,17 @@ export function GuiaClaseViewer({
                                 className="whitespace-pre-wrap"
                               />
                             </div>
-                          </div>
-                        );
-                      }
-                      
-                      // Legacy format with actual content
-                      if (hasObjetivo || hasLegacyDocente || hasLegacyEstudiante) {
+                          );
+                        }
+                        
+                        // No hay contenido
                         return (
-                          <>
-                            {/* Objetivo de la fase */}
-                            {hasObjetivo && (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                  <Target className="w-3.5 h-3.5" />
-                                  Objetivo de la fase
-                                </div>
-                                <div className="text-sm leading-relaxed pl-5">
-                                  <EditableText
-                                    value={(fase as any).objetivo_fase}
-                                    onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'objetivo_fase'], v) : undefined}
-                                    disabled={!canEdit}
-                                    sectionEditing={editingSections['momentos']}
-                                    multiline
-                                  />
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Actividades del Docente - only if has actual content */}
-                            {hasLegacyDocente && (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                  <GraduationCap className="w-3.5 h-3.5" />
-                                  Actividades del Docente
-                                </div>
-                                <ul className="space-y-1.5 pl-5">
-                                  {((fase as any).actividades_docente as string[]).filter(a => a && a.trim()).map((act, j) => (
-                                    <li key={j} className="text-sm flex gap-2">
-                                      <span className="text-primary font-bold shrink-0">•</span>
-                                      <EditableText
-                                        value={act}
-                                        onChange={canEdit ? (v) => {
-                                          const newActs = [...(fase as any).actividades_docente];
-                                          newActs[j] = v;
-                                          updateGuia(['momentos_sesion', i, 'actividades_docente'], newActs);
-                                        } : undefined}
-                                        disabled={!canEdit}
-                                        sectionEditing={editingSections['momentos']}
-                                        multiline
-                                      />
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* Actividades del Estudiante - only if has actual content */}
-                            {hasLegacyEstudiante && (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                  <Users className="w-3.5 h-3.5" />
-                                  Actividades del Estudiante
-                                </div>
-                                <ul className="space-y-1.5 pl-5">
-                                  {((fase as any).actividades_estudiante as string[]).filter(a => a && a.trim()).map((act, j) => (
-                                    <li key={j} className="text-sm flex gap-2">
-                                      <span className="text-accent font-bold shrink-0">•</span>
-                                      <EditableText
-                                        value={act}
-                                        onChange={canEdit ? (v) => {
-                                          const newActs = [...(fase as any).actividades_estudiante];
-                                          newActs[j] = v;
-                                          updateGuia(['momentos_sesion', i, 'actividades_estudiante'], newActs);
-                                        } : undefined}
-                                        disabled={!canEdit}
-                                        sectionEditing={editingSections['momentos']}
-                                        multiline
-                                      />
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </>
-                        );
-                      }
-                      
-                      // Simple actividades text fallback
-                      if (hasLegacyActividades) {
-                        return (
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                            <EditableText
-                              value={fase.actividades}
-                              onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'actividades'], v) : undefined}
-                              disabled={!canEdit}
-                              sectionEditing={editingSections['momentos']}
-                              multiline
-                            />
+                          <div className="text-sm text-muted-foreground italic p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
+                            <p className="flex items-center gap-2">
+                              <HelpCircle className="w-4 h-4" />
+                              No se generó contenido para esta fase. Intenta regenerar la guía.
+                            </p>
                           </div>
-                        );
-                      }
-                      
-                      // No valid content found - show placeholder
-                      return (
-                        <div className="text-sm text-muted-foreground italic p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
-                          <p className="flex items-center gap-2">
-                            <HelpCircle className="w-4 h-4" />
-                            No se generó contenido para esta fase. Intenta regenerar la guía.
-                          </p>
-                        </div>
                       );
                     })()}
                   </div>
