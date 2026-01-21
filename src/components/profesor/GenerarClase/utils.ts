@@ -152,7 +152,7 @@ export const getMissingFields = (
   // Sección es opcional
   
   if (!formData.fecha) missing.push('Fecha programada');
-  if (!formData.areaAcademica) missing.push('Área Académica');
+  if (!formData.areaAcademica) missing.push('Área Curricular');
   if (formData.competencias.length === 0) missing.push('Al menos una Competencia');
   
   // Check that each competencia has at least one capacidad and one desempeño
