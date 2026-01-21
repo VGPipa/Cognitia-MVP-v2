@@ -1224,27 +1224,28 @@ export default function GenerarClase() {
                     {/* Duración - Horas Pedagógicas */}
                     <div className="space-y-2">
                       <Label>Duración del momento de la sesión *</Label>
-                      <div className="flex items-center gap-3">
-                        <Select 
-                          value={String(formData.duracion)} 
-                          onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
-                          disabled={isClaseCompletada}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {HORAS_PEDAGOGICAS.map(hp => (
-                              <SelectItem key={hp.minutos} value={String(hp.minutos)}>
-                                {hp.horas} {hp.horas === 1 ? 'hora pedagógica' : 'horas pedagógicas'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Badge variant="secondary" className="text-sm whitespace-nowrap">
-                          {formData.duracion} min
-                        </Badge>
-                      </div>
+                      <Select 
+                        value={String(formData.duracion)} 
+                        onValueChange={(value) => setFormData({...formData, duracion: parseInt(value)})}
+                        disabled={isClaseCompletada}
+                      >
+                        <SelectTrigger>
+                          <SelectValue>
+                            {(() => {
+                              const horaSeleccionada = HORAS_PEDAGOGICAS.find(hp => hp.minutos === formData.duracion);
+                              if (!horaSeleccionada) return 'Seleccionar duración';
+                              return `${horaSeleccionada.horas} ${horaSeleccionada.horas === 1 ? 'hora pedagógica' : 'horas pedagógicas'} (${formData.duracion} min)`;
+                            })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HORAS_PEDAGOGICAS.map(hp => (
+                            <SelectItem key={hp.minutos} value={String(hp.minutos)}>
+                              {hp.horas} {hp.horas === 1 ? 'hora pedagógica' : 'horas pedagógicas'} ({hp.minutos} min)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {/* Nivel Educativo */}
