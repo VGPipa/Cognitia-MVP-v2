@@ -16,7 +16,11 @@ import {
   HelpCircle,
   HeartHandshake,
   Pencil,
-  Sparkles
+  Sparkles,
+  MessageSquareQuote,
+  Zap,
+  Brain,
+  Layers
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -743,12 +747,88 @@ export function GuiaClaseViewer({
           </div>
         </section>
 
-        {/* IV. MOMENTOS DE LA SESIÓN */}
+        {/* IV. SITUACIÓN SIGNIFICATIVA - NEW CognitIA Section */}
+        {guia.situacion_significativa && (
+          <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-amber-500">
+            <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                <span className="font-semibold text-sm tracking-wide">IV. SITUACIÓN SIGNIFICATIVA</span>
+              </div>
+              {canEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => toggleSectionEdit('situacion')}
+                  className={`text-white hover:bg-white/20 h-7 w-7 p-0 ${editingSections['situacion'] ? 'bg-white/20' : ''}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </header>
+            <div className="p-5 space-y-4 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10">
+              {/* Contexto */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Contexto
+                </h4>
+                <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                  <EditableText
+                    value={guia.situacion_significativa.contexto}
+                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'contexto'], v) : undefined}
+                    disabled={!canEdit}
+                    sectionEditing={editingSections['situacion']}
+                    multiline
+                  />
+                </div>
+              </div>
+
+              {/* Reto/Desafío */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Reto / Desafío
+                </h4>
+                <div className="bg-amber-100 dark:bg-amber-900/40 rounded-lg p-4 border-2 border-amber-300 dark:border-amber-700 text-center">
+                  <p className="font-semibold text-amber-900 dark:text-amber-100 text-lg">
+                    <EditableText
+                      value={guia.situacion_significativa.reto}
+                      onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'reto'], v) : undefined}
+                      disabled={!canEdit}
+                      sectionEditing={editingSections['situacion']}
+                      multiline
+                    />
+                  </p>
+                </div>
+              </div>
+
+              {/* Producto */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Producto
+                </h4>
+                <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                  <EditableText
+                    value={guia.situacion_significativa.producto}
+                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'producto'], v) : undefined}
+                    disabled={!canEdit}
+                    sectionEditing={editingSections['situacion']}
+                    multiline
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* V. MOMENTOS DE LA SESIÓN */}
         <section className="border border-border rounded-lg overflow-hidden">
           <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span className="font-semibold text-sm tracking-wide">IV. MOMENTOS DE LA SESIÓN</span>
+              <span className="font-semibold text-sm tracking-wide">V. MOMENTOS DE LA SESIÓN</span>
             </div>
             {canEdit && (
               <Button 
@@ -906,10 +986,10 @@ export function GuiaClaseViewer({
         {/* Adaptaciones y Diferenciación Pedagógica */}
         {guia.adaptaciones_sugeridas && (guia.adaptaciones_sugeridas.estrategias_diferenciadas || guia.adaptaciones_sugeridas.apoyo_adicional) && (
           <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-rose-400">
-            <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
+          <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-4 h-4" />
-                <span className="font-semibold text-sm tracking-wide">ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA</span>
+                <span className="font-semibold text-sm tracking-wide">VI. ADAPTACIONES Y DIFERENCIACIÓN PEDAGÓGICA</span>
               </div>
               {canEdit && (
                 <Button 

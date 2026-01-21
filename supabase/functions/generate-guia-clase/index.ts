@@ -1,81 +1,187 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { METODOLOGIAS_ACTIVAS_REFERENCE } from "./metodologias-activas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `Eres el "Arquitecto Pedagógico" de Cognitia. Genera GUÍAS DE CLASE en JSON para escuelas peruanas (CNEB/MINEDU).
+const SYSTEM_PROMPT = `# IDENTIDAD Y ROL
 
-### REGLAS CRÍTICAS:
+Eres CognitIA, Especialista Senior en Diseño Curricular y Pedagógico del Ministerio de Educación del Perú (MINEDU).
+
+Tu expertise: Currículo Nacional de la Educación Básica (CNEB), Planificación inversa, Metodologías Activas, Evaluación formativa por competencias, Diseño Universal para el Aprendizaje (DUA), Atención a NEE.
+
+Tu misión: Transformar los datos del formulario en una Sesión de Aprendizaje completa, coherente, inclusiva y ejecutable.
+
+${METODOLOGIAS_ACTIVAS_REFERENCE}
+
+# REGLAS CRÍTICAS
+
 1. Responde SOLO con JSON válido, SIN markdown, SIN \`\`\`
-2. Sé CONCISO: máximo 2-3 oraciones por actividad
-3. Usa EXACTAMENTE las competencias/desempeños proporcionados
-4. NO incluyas texto antes ni después del JSON
+2. Usa EXACTAMENTE las competencias/desempeños proporcionados
+3. Incluye CONSIGNAS TEXTUALES (lo que dice el docente exactamente)
+4. Cada fase del DESARROLLO debe tener PRODUCTO PARCIAL
+5. Las adaptaciones NEE se integran EN cada momento, no como anexo
+6. SOLO usar materiales marcados como disponibles
+7. La metodología activa ESTRUCTURA todo el desarrollo (no es decoración)
 
-### SCHEMA JSON OBLIGATORIO:
+# FILOSOFÍA PEDAGÓGICA OBLIGATORIA
+
+## MOMENTO INICIO (15-20% del tiempo)
+- MOTIVACIÓN: Situación problemática real del contexto peruano con datos específicos
+- CONFLICTO COGNITIVO: Pregunta/paradoja que desestabilice ideas previas
+- SABERES PREVIOS: Conectar con experiencias cotidianas del estudiante
+- PROPÓSITO: Declararlo en términos de utilidad real para el estudiante
+- Técnicas: Casos reales, videos cortos, objetos sorpresa, dilemas, Do Now
+
+## MOMENTO DESARROLLO (60-70% del tiempo)
+- RETO COGNITIVO: Problemas que requieran pensamiento crítico
+- TRABAJO COLABORATIVO: Roles específicos en equipos (Coordinador, Secretario, Portavoz)
+- ANDAMIAJE: Progresión de lo simple a lo complejo
+- METODOLOGÍA ACTIVA: Seleccionar según la matriz de referencia
+- RETROALIMENTACIÓN: Preguntas de sondeo, gestión del error productivo
+
+## MOMENTO CIERRE (15-20% del tiempo)
+- METACOGNICIÓN: "¿Qué fue lo más difícil y cómo lo superaste?"
+- TRANSFERENCIA: "¿Dónde más podrías aplicar esto?"
+- VERIFICACIÓN: Retomar criterios de éxito del inicio
+
+# DISTRIBUCIÓN DEL TIEMPO
+| Momento | % | 45 min | 90 min | 135 min |
+|---------|---|--------|--------|---------|
+| INICIO | 15-20% | 7-9 | 14-18 | 20-27 |
+| DESARROLLO | 60-70% | 27-32 | 54-63 | 81-95 |
+| CIERRE | 15-20% | 7-9 | 14-18 | 20-27 |
+
+# SCHEMA JSON OBLIGATORIO
+
 {
   "datos_generales": {
-    "titulo_sesion": "String creativo (máx 15 palabras)",
+    "titulo_sesion": "String creativo orientado a acción/desafío (máx 15 palabras)",
     "nivel": "Primaria/Secundaria",
     "grado": "ej: 4to Secundaria",
     "area_academica": "String",
     "duracion": "ej: 90 minutos"
   },
+  "situacion_significativa": {
+    "contexto": "1-2 párrafos con situación REAL y CERCANA al estudiante, con datos específicos del Perú",
+    "reto": "Pregunta retadora que conecta con la competencia y es alcanzable en la sesión",
+    "producto": "Descripción del producto que RESPONDE al reto"
+  },
   "propositos_aprendizaje": [{
-    "competencia": "String (USAR la proporcionada)",
+    "competencia": "String (USAR la proporcionada exactamente)",
     "capacidades": ["Capacidad 1", "Capacidad 2"],
-    "criterios_evaluacion": ["Desempeño 1", "Desempeño 2"],
-    "evidencia_aprendizaje": "String breve",
+    "criterios_evaluacion": ["Desempeño 1 EXACTO", "Desempeño 2 EXACTO"],
+    "evidencia_aprendizaje": "Producto único y tangible",
     "instrumento_valoracion": "Rúbrica/Lista de cotejo"
   }],
   "enfoques_transversales": [{
-    "nombre": "String",
-    "descripcion": "String breve (1 oración)"
+    "nombre": "String del CNEB",
+    "valor": "Valor asociado al enfoque",
+    "actitud_docente": "Acción observable del docente",
+    "actitud_estudiante": "Acción observable del estudiante"
   }],
   "preparacion": {
-    "antes_sesion": "String breve",
-    "materiales": ["Material 1", "Material 2"]
+    "antes_sesion": "Qué preparar/fotocopiar/organizar",
+    "materiales": ["Material 1 (SOLO si está disponible)", "Material 2"]
   },
   "momentos_sesion": [
     {
       "fase": "INICIO",
       "duracion": "ej: 15 min",
-      "actividades": "Resumen breve",
-      "objetivo_fase": "Qué se busca (1 oración)",
-      "actividades_docente": ["Acción 1", "Acción 2", "Acción 3"],
-      "actividades_estudiante": ["Acción 1", "Acción 2", "Acción 3"]
+      "objetivo_fase": "Qué se busca lograr (1 oración)",
+      "estrategia_motivacion": {
+        "tipo": "caso_real|video|pregunta_provocadora|objeto_sorpresa|do_now",
+        "descripcion": "Descripción específica de la estrategia"
+      },
+      "conflicto_cognitivo": "Pregunta o situación que genere disonancia cognitiva",
+      "conexion_saberes_previos": "Cómo se conecta con lo que ya saben",
+      "proposito_comunicado": "Propósito en lenguaje estudiantil: Hoy vamos a aprender a [verbo] para poder [utilidad]",
+      "consigna_textual": "Lo que dice el docente EXACTAMENTE entre comillas",
+      "actividades_docente": ["Acción específica 1", "Acción específica 2"],
+      "actividades_estudiante": ["Acción específica 1", "Acción específica 2"]
     },
     {
       "fase": "DESARROLLO",
       "duracion": "ej: 60 min",
-      "actividades": "Resumen breve",
-      "objetivo_fase": "Qué se busca (1 oración)",
-      "actividades_docente": ["Acción 1", "Acción 2", "Acción 3", "Acción 4"],
-      "actividades_estudiante": ["Acción 1", "Acción 2", "Acción 3", "Acción 4"]
+      "objetivo_fase": "Construcción del aprendizaje y producción",
+      "metodologia_activa": {
+        "nombre": "ABPr Caso Rápido / Jigsaw / TPS / etc.",
+        "justificacion": "Por qué esta metodología es adecuada para esta sesión"
+      },
+      "fases_desarrollo": [
+        {
+          "nombre": "Nombre descriptivo de la subfase",
+          "duracion": "X min",
+          "organizacion": "Individual/Parejas/Grupos de X",
+          "consigna_textual": "Instrucción EXACTA del docente",
+          "actividades_docente": ["Acción 1", "Acción 2"],
+          "actividades_estudiante": ["Acción 1", "Acción 2"],
+          "producto_parcial": "Qué evidencia tangible genera esta fase",
+          "roles_cooperativos": [
+            {"rol": "Coordinador", "responsabilidad": "Gestiona tiempos"},
+            {"rol": "Secretario", "responsabilidad": "Registra ideas"}
+          ]
+        }
+      ],
+      "retroalimentacion_formativa": {
+        "preguntas_sondeo": ["¿Cómo llegaste a esa conclusión?", "¿Qué pasaría si...?"],
+        "gestion_error": "Cómo redirigir errores sin dar la respuesta directa"
+      },
+      "actividades_docente": ["Resumen general de acciones del docente"],
+      "actividades_estudiante": ["Resumen general de acciones del estudiante"]
     },
     {
       "fase": "CIERRE",
       "duracion": "ej: 15 min",
-      "actividades": "Resumen breve",
-      "objetivo_fase": "Metacognición (1 oración)",
+      "objetivo_fase": "Consolidar, reflexionar, transferir",
+      "socializacion": {
+        "estrategia": "galeria|plenario_selectivo|intercambio_productos",
+        "descripcion": "Cómo se comparten los productos"
+      },
+      "metacognicion": {
+        "estrategia": "preguntas_orales|ticket_salida|rutina_3-2-1",
+        "preguntas": ["¿Qué aprendimos hoy?", "¿Cómo lo aprendimos?", "¿Dónde lo aplicamos?"]
+      },
+      "verificacion_proposito": "Retomar criterios de éxito del inicio",
+      "consigna_textual": "Lo que dice el docente para cerrar",
       "actividades_docente": ["Acción 1", "Acción 2"],
       "actividades_estudiante": ["Acción 1", "Acción 2"]
     }
   ],
   "adaptaciones_sugeridas": {
-    "estrategias_diferenciadas": "Descripción general breve",
-    "apoyo_adicional": ["Estrategia 1", "Estrategia 2"],
-    "extension_avanzados": ["Actividad 1", "Actividad 2"],
+    "estrategias_diferenciadas": "Descripción general del enfoque diferenciado",
+    "por_tipo_nee": [
+      {
+        "tipo": "TDA/TDAH/TEA/Dislexia/etc.",
+        "en_inicio": "Adaptación específica para el inicio",
+        "en_desarrollo": "Adaptación específica para el desarrollo",
+        "en_cierre": "Adaptación específica para el cierre"
+      }
+    ],
+    "apoyo_adicional": ["Estrategia 1 para estudiantes que necesitan más apoyo", "Estrategia 2"],
+    "extension_avanzados": ["Reto adicional 1 para avanzados", "Reto 2"],
     "recursos_apoyo": ["Recurso 1", "Recurso 2"]
   }
 }
 
-### FILOSOFÍA (aplicar pero NO escribir en JSON):
-- INICIO: Conexión emocional + saberes previos + propósito
-- DESARROLLO: Reto cognitivo + trabajo colaborativo
-- CIERRE: Metacognición`;
+# REGLAS PARA TÍTULO
+✅ Orientado a la acción o desafío: "¿Cómo calcular ganancias como un experto?"
+✅ Genera curiosidad: "El misterio de los números que desaparecen"
+❌ NO puramente temático: "Operaciones combinadas" (muy genérico)
+
+# VERIFICACIÓN DE COHERENCIA
+Antes de responder, verifica mentalmente:
+- [ ] El título es motivador (no solo temático)
+- [ ] La situación significativa tiene CONTEXTO + RETO + PRODUCTO
+- [ ] El reto es RESPONDIDO por el producto
+- [ ] El producto EVIDENCIA los desempeños
+- [ ] La metodología está INTEGRADA en las fases del desarrollo
+- [ ] Cada fase tiene CONSIGNA TEXTUAL
+- [ ] Las adaptaciones NEE están distribuidas por momento
+- [ ] SOLO se usan materiales disponibles`;
 
 interface CompetenciaConDesempenos {
   competencia: string;
@@ -93,7 +199,6 @@ interface GenerateGuiaRequest {
   numeroEstudiantes?: number;
   duracion?: number;
   area?: string;
-  // Nueva estructura de competencias con desempeños
   competenciasConDesempenos?: CompetenciaConDesempenos[];
   enfoquesTransversales?: string[];
   adaptaciones?: string[];
@@ -102,7 +207,6 @@ interface GenerateGuiaRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -136,7 +240,6 @@ serve(async (req) => {
     console.log("Adaptaciones:", adaptaciones);
     console.log("Materiales:", materiales);
 
-    // Build the user prompt with all available data
     const adaptacionesText = adaptaciones && adaptaciones.length > 0
       ? adaptaciones.join(', ')
       : 'Ninguna especificada';
@@ -145,7 +248,6 @@ serve(async (req) => {
       ? materiales.join(', ')
       : recursos?.length > 0 ? recursos.join(', ') : '[Recursos básicos de aula]';
 
-    // Build competencias section with structured desempeños from the form
     let competenciasSection = '';
     if (competenciasConDesempenos && competenciasConDesempenos.length > 0) {
       competenciasSection = competenciasConDesempenos.map((item, index) => {
@@ -185,10 +287,10 @@ Enfoques transversales: ${
     : '[INFERIR los más apropiados]'
 }
 
-MATERIALES DISPONIBLES:
+MATERIALES DISPONIBLES (USAR SOLO ESTOS):
 ${materialesText}
 
-ADAPTACIONES REQUERIDAS (NEE):
+ADAPTACIONES REQUERIDAS (NEE) - INTEGRAR EN CADA MOMENTO:
 ${adaptacionesText}
 ${adaptacionesPersonalizadas ? `\nOtras consideraciones: ${adaptacionesPersonalizadas}` : ''}
 
@@ -198,9 +300,12 @@ ${contexto || '[Usar contexto general para adolescentes peruanos]'}
 INSTRUCCIONES CRÍTICAS:
 1. En propositos_aprendizaje, USAR EXACTAMENTE las competencias proporcionadas
 2. Para cada competencia, en criterios_evaluacion usar un ARRAY con los desempeños EXACTOS proporcionados
-3. NO modificar ni parafrasear los desempeños - copiarlos textualmente
-4. Incluir el campo "duracion" en datos_generales (ej: "${duracion || 55} minutos")
-5. Generar actividades diferenciadas para cada tipo de adaptación indicada`;
+3. Crear una situacion_significativa con contexto peruano real, reto claro y producto que responda al reto
+4. Seleccionar la metodología activa más apropiada según la matriz de referencia
+5. Incluir consignas textuales (lo que dice el docente) en cada momento
+6. Las fases del desarrollo deben tener productos parciales tangibles
+7. Incluir adaptaciones específicas para cada tipo de NEE marcado, distribuidas en inicio/desarrollo/cierre
+8. Calcular tiempos según la distribución: INICIO 15-20%, DESARROLLO 60-70%, CIERRE 15-20%`;
 
     console.log("User prompt built, calling Lovable AI...");
 
@@ -249,10 +354,8 @@ INSTRUCCIONES CRÍTICAS:
       throw new Error("La IA no generó contenido");
     }
 
-    // Parse the JSON response - handle markdown code blocks and truncation
     let guiaData;
     try {
-      // Remove markdown code blocks if present
       let jsonContent = content.trim();
       if (jsonContent.startsWith("```json")) {
         jsonContent = jsonContent.slice(7);
@@ -264,11 +367,9 @@ INSTRUCCIONES CRÍTICAS:
       }
       jsonContent = jsonContent.trim();
       
-      // Try to fix truncated JSON
       if (!jsonContent.endsWith('}')) {
         console.warn("Response appears truncated, attempting advanced fix...");
         
-        // Strategy 1: Find last complete brace match
         let braceCount = 0;
         let inString = false;
         let escapeNext = false;
@@ -305,10 +406,8 @@ INSTRUCCIONES CRÍTICAS:
           jsonContent = jsonContent.substring(0, lastValidIndex + 1);
           console.log("Truncated JSON fixed at position:", lastValidIndex);
         } else {
-          // Strategy 2: Try to close the JSON structure manually
           console.warn("Attempting to close JSON structure manually...");
           
-          // Count unclosed braces/brackets (ignoring strings)
           braceCount = 0;
           let bracketCount = 0;
           inString = false;
@@ -327,7 +426,6 @@ INSTRUCCIONES CRÍTICAS:
             }
           }
           
-          // Check if we're in an unclosed string (odd number of quotes after last escape)
           const lastQuoteIndex = jsonContent.lastIndexOf('"');
           const contentAfterQuote = jsonContent.substring(lastQuoteIndex + 1);
           const hasUnclosedString = !contentAfterQuote.includes('"') && 
@@ -337,7 +435,6 @@ INSTRUCCIONES CRÍTICAS:
             jsonContent += '"';
           }
           
-          // Close arrays and objects
           while (bracketCount > 0) {
             jsonContent += ']';
             bracketCount--;
@@ -358,7 +455,6 @@ INSTRUCCIONES CRÍTICAS:
       console.error("Raw content length:", content.length);
       console.error("Raw content preview:", content.substring(0, 500));
       
-      // Fallback: return a minimal valid structure using the input data
       console.log("Using fallback structure from input data...");
       guiaData = {
         datos_generales: {
@@ -367,6 +463,11 @@ INSTRUCCIONES CRÍTICAS:
           grado: grado || "[INFERIDO]",
           area_academica: area || "[NO ESPECIFICADA]",
           duracion: `${duracion || 55} minutos`
+        },
+        situacion_significativa: {
+          contexto: contexto || "Contexto educativo peruano",
+          reto: `¿Cómo podemos aplicar lo aprendido sobre ${tema}?`,
+          producto: "Producto que evidencia el aprendizaje"
         },
         propositos_aprendizaje: competenciasConDesempenos?.map(item => ({
           competencia: item.competencia,
@@ -384,19 +485,39 @@ INSTRUCCIONES CRÍTICAS:
           materiales: materiales || recursos || []
         },
         momentos_sesion: [
-          { fase: "INICIO", duracion: "15 min", actividades: "Motivación y saberes previos", objetivo_fase: "Conectar con el tema", actividades_docente: ["Presentar el propósito"], actividades_estudiante: ["Participar activamente"] },
-          { fase: "DESARROLLO", duracion: `${Math.max((duracion || 55) - 25, 30)} min`, actividades: "Desarrollo del tema", objetivo_fase: "Lograr el aprendizaje", actividades_docente: ["Guiar el proceso"], actividades_estudiante: ["Trabajar en equipo"] },
-          { fase: "CIERRE", duracion: "10 min", actividades: "Metacognición", objetivo_fase: "Reflexionar sobre lo aprendido", actividades_docente: ["Facilitar la reflexión"], actividades_estudiante: ["Compartir aprendizajes"] }
+          { 
+            fase: "INICIO", 
+            duracion: "15 min", 
+            objetivo_fase: "Conectar con el tema y activar saberes previos",
+            actividades_docente: ["Presentar el propósito de la sesión"], 
+            actividades_estudiante: ["Participar activamente en la motivación"] 
+          },
+          { 
+            fase: "DESARROLLO", 
+            duracion: `${Math.max((duracion || 55) - 25, 30)} min`, 
+            objetivo_fase: "Construir el aprendizaje mediante actividades colaborativas",
+            actividades_docente: ["Guiar el proceso de aprendizaje"], 
+            actividades_estudiante: ["Trabajar en equipo para resolver el reto"] 
+          },
+          { 
+            fase: "CIERRE", 
+            duracion: "10 min", 
+            objetivo_fase: "Reflexionar sobre lo aprendido y transferir",
+            actividades_docente: ["Facilitar la metacognición"], 
+            actividades_estudiante: ["Compartir aprendizajes y reflexiones"] 
+          }
         ],
         adaptaciones_sugeridas: {
-          estrategias_diferenciadas: adaptaciones?.length ? `Estrategias para: ${adaptaciones.join(', ')}` : "Sin adaptaciones específicas"
+          estrategias_diferenciadas: adaptaciones?.length ? `Estrategias para: ${adaptaciones.join(', ')}` : "Sin adaptaciones específicas",
+          apoyo_adicional: [],
+          extension_avanzados: [],
+          recursos_apoyo: []
         }
       };
     }
 
-    // Normalize propositos_aprendizaje to ensure criterios_evaluacion and capacidades are arrays
+    // Normalize propositos_aprendizaje
     const normalizedPropositos = (guiaData.propositos_aprendizaje || []).map((p: any, index: number) => {
-      // Get capacidades from the original input if available
       const inputCapacidades = competenciasConDesempenos?.[index]?.capacidades || [];
       return {
         ...p,
@@ -407,7 +528,6 @@ INSTRUCCIONES CRÍTICAS:
       };
     });
 
-    // Build default propositos from competenciasConDesempenos if AI didn't return any
     const defaultPropositos = competenciasConDesempenos && competenciasConDesempenos.length > 0
       ? competenciasConDesempenos.map(item => ({
           competencia: item.competencia,
@@ -424,6 +544,57 @@ INSTRUCCIONES CRÍTICAS:
           instrumento_valoracion: "Lista de cotejo"
         }];
 
+    // Normalize enfoques_transversales to always have descripcion field
+    const normalizedEnfoques = (guiaData.enfoques_transversales || []).map((e: any) => ({
+      nombre: e.nombre,
+      descripcion: e.descripcion || 
+        (e.actitud_docente && e.actitud_estudiante 
+          ? `Docente: ${e.actitud_docente}. Estudiantes: ${e.actitud_estudiante}`
+          : e.valor || "Se evidencia en las actividades de la sesión"),
+      valor: e.valor,
+      actitud_docente: e.actitud_docente,
+      actitud_estudiante: e.actitud_estudiante
+    }));
+
+    // Normalize momentos_sesion to handle both old and new structures
+    const normalizedMomentos = (guiaData.momentos_sesion || []).map((m: any) => {
+      const normalized: any = {
+        fase: m.fase,
+        duracion: m.duracion,
+        actividades: m.actividades || "",
+        objetivo_fase: m.objetivo_fase,
+        actividades_docente: m.actividades_docente || [],
+        actividades_estudiante: m.actividades_estudiante || []
+      };
+
+      // Copy new CognitIA fields if present
+      if (m.estrategia_motivacion) normalized.estrategia_motivacion = m.estrategia_motivacion;
+      if (m.conflicto_cognitivo) normalized.conflicto_cognitivo = m.conflicto_cognitivo;
+      if (m.conexion_saberes_previos) normalized.conexion_saberes_previos = m.conexion_saberes_previos;
+      if (m.proposito_comunicado) normalized.proposito_comunicado = m.proposito_comunicado;
+      if (m.consigna_textual) normalized.consigna_textual = m.consigna_textual;
+      if (m.metodologia_activa) normalized.metodologia_activa = m.metodologia_activa;
+      if (m.fases_desarrollo) normalized.fases_desarrollo = m.fases_desarrollo;
+      if (m.retroalimentacion_formativa) normalized.retroalimentacion_formativa = m.retroalimentacion_formativa;
+      if (m.socializacion) normalized.socializacion = m.socializacion;
+      if (m.metacognicion) normalized.metacognicion = m.metacognicion;
+      if (m.verificacion_proposito) normalized.verificacion_proposito = m.verificacion_proposito;
+
+      return normalized;
+    });
+
+    // Normalize adaptaciones_sugeridas
+    const normalizedAdaptaciones = {
+      estrategias_diferenciadas: guiaData.adaptaciones_sugeridas?.estrategias_diferenciadas || 
+        (adaptaciones && adaptaciones.length > 0
+          ? `Estrategias específicas para: ${adaptaciones.join(', ')}`
+          : "Sin adaptaciones específicas requeridas"),
+      por_tipo_nee: guiaData.adaptaciones_sugeridas?.por_tipo_nee || [],
+      apoyo_adicional: guiaData.adaptaciones_sugeridas?.apoyo_adicional || [],
+      extension_avanzados: guiaData.adaptaciones_sugeridas?.extension_avanzados || [],
+      recursos_apoyo: guiaData.adaptaciones_sugeridas?.recursos_apoyo || []
+    };
+
     const guiaClase = {
       datos_generales: {
         titulo_sesion: guiaData.datos_generales?.titulo_sesion || `Sesión: ${tema}`,
@@ -432,8 +603,13 @@ INSTRUCCIONES CRÍTICAS:
         area_academica: guiaData.datos_generales?.area_academica || area || "[NO ESPECIFICADA]",
         duracion: guiaData.datos_generales?.duracion || `${duracion || 55} minutos`
       },
+      situacion_significativa: guiaData.situacion_significativa || {
+        contexto: contexto || "Contexto educativo peruano",
+        reto: `¿Cómo podemos aplicar lo aprendido sobre ${tema}?`,
+        producto: "Producto que evidencia el aprendizaje"
+      },
       propositos_aprendizaje: normalizedPropositos.length > 0 ? normalizedPropositos : defaultPropositos,
-      enfoques_transversales: guiaData.enfoques_transversales || (
+      enfoques_transversales: normalizedEnfoques.length > 0 ? normalizedEnfoques : (
         Array.isArray(enfoquesTransversales) && enfoquesTransversales.length > 0
           ? enfoquesTransversales.map(nombre => ({
               nombre,
@@ -448,28 +624,27 @@ INSTRUCCIONES CRÍTICAS:
         antes_sesion: "Preparar materiales y revisar el contexto del grupo",
         materiales: materiales || recursos || []
       },
-      momentos_sesion: guiaData.momentos_sesion || [
+      momentos_sesion: normalizedMomentos.length > 0 ? normalizedMomentos : [
         {
           fase: "INICIO",
           duracion: "10 min",
-          actividades: "Activación de conocimientos previos y presentación del propósito"
+          actividades: "Activación de conocimientos previos y presentación del propósito",
+          objetivo_fase: "Conectar con saberes previos y motivar"
         },
         {
           fase: "DESARROLLO",
           duracion: `${Math.max((duracion || 55) - 20, 30)} min`,
-          actividades: "Desarrollo de actividades principales"
+          actividades: "Desarrollo de actividades principales",
+          objetivo_fase: "Construir el aprendizaje"
         },
         {
           fase: "CIERRE",
           duracion: "10 min",
-          actividades: "Metacognición y reflexión final"
+          actividades: "Metacognición y reflexión final",
+          objetivo_fase: "Consolidar y transferir"
         }
       ],
-      adaptaciones_sugeridas: guiaData.adaptaciones_sugeridas || {
-        estrategias_diferenciadas: adaptaciones && adaptaciones.length > 0
-          ? `Estrategias específicas para: ${adaptaciones.join(', ')}`
-          : "Sin adaptaciones específicas requeridas"
-      }
+      adaptaciones_sugeridas: normalizedAdaptaciones
     };
 
     console.log("=== Guía generated successfully ===");

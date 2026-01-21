@@ -11,25 +11,34 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// New schema aligned with CNEB MINEDU format
+// New schema aligned with CNEB MINEDU format - CognitIA v3.0
 export interface GuiaClaseData {
   datos_generales: {
     titulo_sesion: string;
     nivel: string;
     grado: string;
     area_academica: string;
-    duracion: string; // NEW: "90 minutos"
+    duracion: string;
+  };
+  // NEW: Situación significativa con contexto, reto y producto
+  situacion_significativa?: {
+    contexto: string;
+    reto: string;
+    producto: string;
   };
   propositos_aprendizaje: Array<{
     competencia: string;
-    capacidades?: string[]; // NEW: Array de capacidades por competencia
-    criterios_evaluacion: string[]; // CHANGED: Array de desempeños por competencia
+    capacidades?: string[];
+    criterios_evaluacion: string[];
     evidencia_aprendizaje: string;
     instrumento_valoracion: string;
   }>;
   enfoques_transversales: Array<{
     nombre: string;
     descripcion: string;
+    valor?: string;
+    actitud_docente?: string;
+    actitud_estudiante?: string;
   }>;
   preparacion: {
     antes_sesion: string;
@@ -42,9 +51,56 @@ export interface GuiaClaseData {
     objetivo_fase?: string;
     actividades_docente?: string[];
     actividades_estudiante?: string[];
+    // NEW CognitIA fields for INICIO
+    estrategia_motivacion?: {
+      tipo: string;
+      descripcion: string;
+    };
+    conflicto_cognitivo?: string;
+    conexion_saberes_previos?: string;
+    proposito_comunicado?: string;
+    consigna_textual?: string;
+    // NEW CognitIA fields for DESARROLLO
+    metodologia_activa?: {
+      nombre: string;
+      justificacion: string;
+    };
+    fases_desarrollo?: Array<{
+      nombre: string;
+      duracion: string;
+      organizacion?: string;
+      consigna_textual?: string;
+      actividades_docente: string[];
+      actividades_estudiante: string[];
+      producto_parcial?: string;
+      roles_cooperativos?: Array<{
+        rol: string;
+        responsabilidad: string;
+      }>;
+    }>;
+    retroalimentacion_formativa?: {
+      preguntas_sondeo: string[];
+      gestion_error: string;
+    };
+    // NEW CognitIA fields for CIERRE
+    socializacion?: {
+      estrategia: string;
+      descripcion: string;
+    };
+    metacognicion?: {
+      estrategia: string;
+      preguntas: string[];
+    };
+    verificacion_proposito?: string;
   }>;
   adaptaciones_sugeridas?: {
     estrategias_diferenciadas: string;
+    por_tipo_nee?: Array<{
+      tipo: string;
+      en_inicio: string;
+      en_desarrollo: string;
+      en_cierre: string;
+    }>;
     apoyo_adicional?: string[];
     extension_avanzados?: string[];
     recursos_apoyo?: string[];
