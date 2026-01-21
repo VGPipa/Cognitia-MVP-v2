@@ -928,122 +928,156 @@ export function GuiaClaseViewer({
                   
                   {/* Phase Content */}
                   <div className="p-4 space-y-4">
-                    {/* NEW: Narrative format (narrativa_docente) - preferred */}
-                    {'narrativa_docente' in fase && (fase as any).narrativa_docente ? (
-                      <div className="space-y-3">
-                        {/* Organization label if available */}
-                        {'organizacion' in fase && (fase as any).organizacion && (
-                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                            <Users className="w-3.5 h-3.5" />
-                            {(fase as any).organizacion}
-                          </div>
-                        )}
-                        
-                        {/* Methodology for DESARROLLO */}
-                        {'metodologia_activa' in fase && (fase as any).metodologia_activa && (
-                          <div className="bg-white/60 dark:bg-slate-900/40 rounded-lg p-3 border border-border/50 mb-3">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Metodología: {(fase as any).metodologia_activa.nombre}
-                            </div>
-                            <p className="text-xs text-slate-600 dark:text-slate-400 italic">
-                              {(fase as any).metodologia_activa.justificacion}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {/* Main narrative text */}
-                        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2">
-                          <EditableText
-                            value={(fase as any).narrativa_docente}
-                            onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'narrativa_docente'], v) : undefined}
-                            disabled={!canEdit}
-                            sectionEditing={editingSections['momentos']}
-                            multiline
-                            className="whitespace-pre-wrap"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      /* Legacy format with detailed structure or simple actividades */
-                      <>
-                        {/* Objetivo de la fase */}
-                        {'objetivo_fase' in fase && (fase as any).objetivo_fase && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                              <Target className="w-3.5 h-3.5" />
-                              Objetivo de la fase
-                            </div>
-                            <div className="text-sm leading-relaxed pl-5">
+                    {(() => {
+                      // Check for narrative content (new format)
+                      const hasNarrativa = 'narrativa_docente' in fase && 
+                        typeof (fase as any).narrativa_docente === 'string' && 
+                        (fase as any).narrativa_docente.trim().length > 0;
+                      
+                      // Check for legacy content with actual data (not empty arrays)
+                      const hasLegacyDocente = 'actividades_docente' in fase && 
+                        Array.isArray((fase as any).actividades_docente) && 
+                        (fase as any).actividades_docente.length > 0 &&
+                        (fase as any).actividades_docente.some((a: string) => a && a.trim().length > 0);
+                      
+                      const hasLegacyEstudiante = 'actividades_estudiante' in fase && 
+                        Array.isArray((fase as any).actividades_estudiante) && 
+                        (fase as any).actividades_estudiante.length > 0 &&
+                        (fase as any).actividades_estudiante.some((a: string) => a && a.trim().length > 0);
+                      
+                      const hasLegacyActividades = 'actividades' in fase && 
+                        typeof fase.actividades === 'string' && 
+                        fase.actividades.trim().length > 0;
+                      
+                      const hasObjetivo = 'objetivo_fase' in fase && 
+                        typeof (fase as any).objetivo_fase === 'string' && 
+                        (fase as any).objetivo_fase.trim().length > 0;
+
+                      // Prefer narrative format
+                      if (hasNarrativa) {
+                        return (
+                          <div className="space-y-3">
+                            {/* Organization label if available */}
+                            {'organizacion' in fase && (fase as any).organizacion && (
+                              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <Users className="w-3.5 h-3.5" />
+                                {(fase as any).organizacion}
+                              </div>
+                            )}
+                            
+                            {/* Methodology for DESARROLLO */}
+                            {'metodologia_activa' in fase && (fase as any).metodologia_activa && (
+                              <div className="bg-white/60 dark:bg-slate-900/40 rounded-lg p-3 border border-border/50 mb-3">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  Metodología: {(fase as any).metodologia_activa.nombre}
+                                </div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                                  {(fase as any).metodologia_activa.justificacion}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Main narrative text */}
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2">
                               <EditableText
-                                value={(fase as any).objetivo_fase}
-                                onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'objetivo_fase'], v) : undefined}
+                                value={(fase as any).narrativa_docente}
+                                onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'narrativa_docente'], v) : undefined}
                                 disabled={!canEdit}
                                 sectionEditing={editingSections['momentos']}
                                 multiline
+                                className="whitespace-pre-wrap"
                               />
                             </div>
                           </div>
-                        )}
-                        
-                        {/* Actividades del Docente */}
-                        {'actividades_docente' in fase && Array.isArray((fase as any).actividades_docente) && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                              <GraduationCap className="w-3.5 h-3.5" />
-                              Actividades del Docente
-                            </div>
-                            <ul className="space-y-1.5 pl-5">
-                              {((fase as any).actividades_docente as string[]).map((act, j) => (
-                                <li key={j} className="text-sm flex gap-2">
-                                  <span className="text-primary font-bold shrink-0">•</span>
+                        );
+                      }
+                      
+                      // Legacy format with actual content
+                      if (hasObjetivo || hasLegacyDocente || hasLegacyEstudiante) {
+                        return (
+                          <>
+                            {/* Objetivo de la fase */}
+                            {hasObjetivo && (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                                  <Target className="w-3.5 h-3.5" />
+                                  Objetivo de la fase
+                                </div>
+                                <div className="text-sm leading-relaxed pl-5">
                                   <EditableText
-                                    value={act}
-                                    onChange={canEdit ? (v) => {
-                                      const newActs = [...(fase as any).actividades_docente];
-                                      newActs[j] = v;
-                                      updateGuia(['momentos_sesion', i, 'actividades_docente'], newActs);
-                                    } : undefined}
+                                    value={(fase as any).objetivo_fase}
+                                    onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'objetivo_fase'], v) : undefined}
                                     disabled={!canEdit}
                                     sectionEditing={editingSections['momentos']}
                                     multiline
                                   />
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {/* Actividades del Estudiante */}
-                        {'actividades_estudiante' in fase && Array.isArray((fase as any).actividades_estudiante) && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                              <Users className="w-3.5 h-3.5" />
-                              Actividades del Estudiante
-                            </div>
-                            <ul className="space-y-1.5 pl-5">
-                              {((fase as any).actividades_estudiante as string[]).map((act, j) => (
-                                <li key={j} className="text-sm flex gap-2">
-                                  <span className="text-accent font-bold shrink-0">•</span>
-                                  <EditableText
-                                    value={act}
-                                    onChange={canEdit ? (v) => {
-                                      const newActs = [...(fase as any).actividades_estudiante];
-                                      newActs[j] = v;
-                                      updateGuia(['momentos_sesion', i, 'actividades_estudiante'], newActs);
-                                    } : undefined}
-                                    disabled={!canEdit}
-                                    sectionEditing={editingSections['momentos']}
-                                    multiline
-                                  />
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {/* Fallback: Simple actividades text */}
-                        {!('objetivo_fase' in fase) && !('actividades_docente' in fase) && (
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Actividades del Docente - only if has actual content */}
+                            {hasLegacyDocente && (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                                  <GraduationCap className="w-3.5 h-3.5" />
+                                  Actividades del Docente
+                                </div>
+                                <ul className="space-y-1.5 pl-5">
+                                  {((fase as any).actividades_docente as string[]).filter(a => a && a.trim()).map((act, j) => (
+                                    <li key={j} className="text-sm flex gap-2">
+                                      <span className="text-primary font-bold shrink-0">•</span>
+                                      <EditableText
+                                        value={act}
+                                        onChange={canEdit ? (v) => {
+                                          const newActs = [...(fase as any).actividades_docente];
+                                          newActs[j] = v;
+                                          updateGuia(['momentos_sesion', i, 'actividades_docente'], newActs);
+                                        } : undefined}
+                                        disabled={!canEdit}
+                                        sectionEditing={editingSections['momentos']}
+                                        multiline
+                                      />
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Actividades del Estudiante - only if has actual content */}
+                            {hasLegacyEstudiante && (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                                  <Users className="w-3.5 h-3.5" />
+                                  Actividades del Estudiante
+                                </div>
+                                <ul className="space-y-1.5 pl-5">
+                                  {((fase as any).actividades_estudiante as string[]).filter(a => a && a.trim()).map((act, j) => (
+                                    <li key={j} className="text-sm flex gap-2">
+                                      <span className="text-accent font-bold shrink-0">•</span>
+                                      <EditableText
+                                        value={act}
+                                        onChange={canEdit ? (v) => {
+                                          const newActs = [...(fase as any).actividades_estudiante];
+                                          newActs[j] = v;
+                                          updateGuia(['momentos_sesion', i, 'actividades_estudiante'], newActs);
+                                        } : undefined}
+                                        disabled={!canEdit}
+                                        sectionEditing={editingSections['momentos']}
+                                        multiline
+                                      />
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </>
+                        );
+                      }
+                      
+                      // Simple actividades text fallback
+                      if (hasLegacyActividades) {
+                        return (
                           <div className="text-sm leading-relaxed whitespace-pre-wrap">
                             <EditableText
                               value={fase.actividades}
@@ -1053,9 +1087,19 @@ export function GuiaClaseViewer({
                               multiline
                             />
                           </div>
-                        )}
-                      </>
-                    )}
+                        );
+                      }
+                      
+                      // No valid content found - show placeholder
+                      return (
+                        <div className="text-sm text-muted-foreground italic p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
+                          <p className="flex items-center gap-2">
+                            <HelpCircle className="w-4 h-4" />
+                            No se generó contenido para esta fase. Intenta regenerar la guía.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
