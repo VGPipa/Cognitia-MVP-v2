@@ -7,6 +7,88 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitizar caracteres de control dentro de strings JSON
+function sanitizeJsonString(content: string): string {
+  let result = '';
+  let inString = false;
+  let escapeNext = false;
+  
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    
+    if (escapeNext) {
+      result += char;
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      result += char;
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    if (inString) {
+      const code = char.charCodeAt(0);
+      if (code < 32) {
+        if (code === 10) result += '\\n';
+        else if (code === 13) result += '\\r';
+        else if (code === 9) result += '\\t';
+        else result += ' ';
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
+  
+  return result;
+}
+
+// Helper functions para adaptaciones específicas por NEE y momento
+function getAdaptacionInicio(tipo: string): string {
+  const adaptaciones: Record<string, string> = {
+    "TDA": "Establecer contacto visual directo al dar consignas. Ubicar al estudiante cerca del docente, en una posición estratégica lejos de ventanas y puertas. Dar consignas breves, claras y secuenciadas (una a la vez). Verificar comprensión mediante parafraseo antes de continuar.",
+    "TDAH": "Permitir movimiento controlado durante la fase de inicio (estar de pie, ayudar a repartir materiales). Ubicación estratégica lejos de distractores. Asignar un rol activo desde el inicio para canalizar la energía. Usar señales no verbales acordadas para reconcentrar la atención.",
+    "TEA": "Presentar la agenda visual de la sesión con pictogramas o imágenes claras. Anticipar los cambios de actividad con al menos 2 minutos de aviso. Usar instrucciones explícitas sin ambigüedades ni lenguaje figurado. Mantener un tono de voz calmado y predecible.",
+    "Dislexia": "Proporcionar instrucciones orales acompañadas de texto en formato grande y con interlineado amplio. Dar tiempo extra para procesar información escrita. Usar código de colores para destacar información clave. Evitar pedir lectura en voz alta sin preparación previa.",
+    "Discapacidad Intelectual": "Usar instrucciones simples, una a la vez, con vocabulario concreto. Acompañar las instrucciones con apoyo visual (pictogramas, gestos). Dar refuerzo positivo inmediato. Verificar comprensión mediante demostración práctica.",
+    "Altas capacidades": "Formular una pregunta de extensión o reto adicional desde el enganche. Asignar rol de observador crítico para identificar patrones o conexiones. Anticipar conexiones con temas más avanzados para mantener el interés."
+  };
+  return adaptaciones[tipo] || `Aplicar principios DUA para estudiantes con ${tipo}: múltiples formas de presentación, verificar comprensión, y adaptar el ritmo según sus necesidades.`;
+}
+
+function getAdaptacionDesarrollo(tipo: string): string {
+  const adaptaciones: Record<string, string> = {
+    "TDA": "Dividir las tareas en bloques cortos de 10-15 minutos con pausas breves. Hacer verificaciones frecuentes del avance (cada 5 minutos). Usar señales no verbales acordadas para reconcentrar sin interrumpir al grupo. Ofrecer retroalimentación inmediata y específica.",
+    "TDAH": "Asignar roles activos que impliquen movimiento (repartir materiales, ser mensajero entre grupos). Programar descansos activos breves entre fases de trabajo. Dar retroalimentación inmediata y frecuente. Usar temporizador visual para gestionar tiempos.",
+    "TEA": "Proporcionar instrucciones escritas paso a paso que el estudiante pueda consultar. Evitar lenguaje figurado, metáforas o sarcasmo. Anticipar las transiciones entre actividades con aviso previo. Respetar el espacio personal y las rutinas establecidas.",
+    "Dislexia": "Proporcionar textos fragmentados con interlineado amplio (1.5 o doble). Dar tiempo extra para la lectura y escritura. Asignar un par lector de apoyo. Permitir uso de grabadora o dictado como alternativa a la escritura extensa.",
+    "Discapacidad Intelectual": "Dividir las tareas en pasos muy pequeños y concretos. Ofrecer modelado paso a paso antes de la práctica independiente. Celebrar cada logro parcial con refuerzo positivo inmediato. Usar materiales concretos y manipulativos.",
+    "Altas capacidades": "Asignar rol de tutor par para apoyar a compañeros que lo necesiten. Ofrecer una investigación adicional o reto de mayor complejidad cognitiva. Proponer conexiones con problemas más abstractos o de otros campos. Permitir profundización autónoma."
+  };
+  return adaptaciones[tipo] || `Adaptar materiales y tiempos para estudiantes con ${tipo}: ofrecer andamiaje adicional, verificar comprensión frecuentemente, y ajustar la complejidad de las tareas.`;
+}
+
+function getAdaptacionCierre(tipo: string): string {
+  const adaptaciones: Record<string, string> = {
+    "TDA": "Hacer verificación paso a paso de lo aprendido mediante preguntas dirigidas. Ofrecer síntesis muy breve y concreta (3-4 ideas clave máximo). Usar organizador gráfico para consolidar. Dar instrucciones claras sobre tareas pendientes.",
+    "TDAH": "Permitir participación activa en la síntesis (escribir en la pizarra, señalar ideas). Programar un cierre dinámico con movimiento permitido. Verificar que haya registrado las tareas pendientes. Despedir con mensaje positivo sobre su participación.",
+    "TEA": "Mantener un cierre predecible sin sorpresas ni cambios de última hora. Anticipar claramente qué ocurrirá en la próxima sesión. Seguir la rutina de despedida consistente establecida. Verificar que haya procesado las instrucciones de cierre.",
+    "Dislexia": "Ofrecer la opción de respuesta oral en lugar de escrita. Permitir grabación de audio como alternativa al registro escrito. Proporcionar síntesis escrita en formato accesible. Verificar comprensión de las tareas pendientes de forma oral.",
+    "Discapacidad Intelectual": "Celebrar explícitamente el esfuerzo y los logros del estudiante. Dar refuerzo positivo específico sobre lo que hizo bien. Realizar un cierre afectivo y motivador. Verificar comprensión de lo aprendido con preguntas concretas.",
+    "Altas capacidades": "Proponer un reto de transferencia a contextos más complejos o nuevos. Formular preguntas de extensión para reflexión personal. Sugerir lecturas o investigaciones adicionales optativas. Reconocer sus aportes al aprendizaje del grupo."
+  };
+  return adaptaciones[tipo] || `Ajustar el cierre para estudiantes con ${tipo}: ofrecer alternativas de expresión, verificar comprensión de forma diferenciada, y celebrar los logros.`;
+}
+
 const SYSTEM_PROMPT = `# IDENTIDAD Y ROL
 
 Eres CognitIA, Especialista Senior en Diseño Curricular y Pedagógico del Ministerio de Educación del Perú (MINEDU).
@@ -369,6 +451,10 @@ INSTRUCCIONES CRÍTICAS:
       }
       jsonContent = jsonContent.trim();
       
+      // SANITIZAR caracteres de control antes de parsear
+      jsonContent = sanitizeJsonString(jsonContent);
+      console.log("JSON sanitized, length:", jsonContent.length);
+      
       if (!jsonContent.endsWith('}')) {
         console.warn("Response appears truncated, attempting advanced fix...");
         
@@ -457,62 +543,133 @@ INSTRUCCIONES CRÍTICAS:
       console.error("Raw content length:", content.length);
       console.error("Raw content preview:", content.substring(0, 500));
       
-      console.log("Using fallback structure from input data...");
-      // FALLBACK con formato NUEVO (narrativa continua, NO legacy)
+      console.log("Using EXTENSIVE fallback structure from input data...");
+      
+      // Calcular tiempos según duración
+      const totalMinutos = duracion || 55;
+      const inicioMin = Math.round(totalMinutos * 0.18);
+      const desarrolloMin = Math.round(totalMinutos * 0.65);
+      const cierreMin = Math.round(totalMinutos * 0.17);
+      
+      // FALLBACK EXTENSO con formato NUEVO (narrativa completa y profesional)
       guiaData = {
         datos_generales: {
-          titulo_sesion: `Sesión: ${tema}`,
+          titulo_sesion: `Explorando ${tema}: Una experiencia de aprendizaje significativo`,
           nivel: nivel || "Secundaria",
           grado: grado || "[INFERIDO]",
           area_academica: area || "[NO ESPECIFICADA]",
-          duracion: `${duracion || 55} minutos`
+          duracion: `${totalMinutos} minutos`
         },
-        // STRING único, no objeto
-        situacion_significativa: `${contexto || "En el contexto educativo peruano"}, los estudiantes se enfrentan al reto de comprender ${tema}. Esta situación requiere que apliquen sus conocimientos previos y desarrollen nuevas habilidades. Nos preguntamos: ¿Cómo podemos aplicar lo aprendido sobre ${tema}? ¿Qué estrategias nos ayudarán a resolver este desafío?`,
+        // STRING único con contexto rico
+        situacion_significativa: `En el contexto educativo peruano, los estudiantes de ${grado || "este grado"} en el área de ${area || "estudio"} enfrentan situaciones cotidianas que requieren aplicar conocimientos sobre ${tema}. ${contexto || "Esta situación los lleva a cuestionarse sobre cómo resolver problemas reales de su entorno usando lo que aprenden en clase"}. Para lograr esto, retamos a los estudiantes a responder: ¿Cómo podemos aplicar lo aprendido sobre ${tema} en nuestra vida diaria? ¿Qué estrategias o procedimientos nos ayudarán a resolver este tipo de situaciones de manera efectiva?`,
         propositos_aprendizaje: competenciasConDesempenos?.map(item => ({
           competencia: item.competencia,
           capacidades: item.capacidades,
           criterios_evaluacion: item.desempenos,
-          evidencia_aprendizaje: "Producto o actuación observable",
-          instrumento_valoracion: "Lista de cotejo"
+          evidencia_aprendizaje: "Producto tangible que demuestre el logro de los desempeños",
+          instrumento_valoracion: "Lista de cotejo con criterios específicos"
         })) || [],
         enfoques_transversales: enfoquesTransversales?.map(nombre => ({
           nombre,
-          descripcion: "Se evidencia cuando los estudiantes aplican este enfoque"
+          descripcion: "Se evidencia cuando los estudiantes aplican los valores de este enfoque en sus interacciones y productos de aprendizaje"
         })) || [],
         preparacion: {
-          antes_sesion: "Preparar materiales y revisar el contexto del grupo",
-          materiales: materiales || recursos || []
+          antes_sesion: "Revisar el material de la sesión anterior para establecer conexiones. Preparar los materiales y recursos necesarios. Organizar el espacio del aula según las actividades planificadas. Anticipar posibles dificultades y preparar estrategias de apoyo.",
+          materiales: materiales || recursos || ["Pizarra", "Plumones", "Hojas de trabajo", "Material concreto"]
         },
         momentos_sesion: [
           { 
             fase: "INICIO", 
-            duracion: "15 min",
+            duracion: `${inicioMin} min`,
             organizacion: "En grupo clase",
-            narrativa_docente: "**Bienvenida:** Recibe a los estudiantes y genera un ambiente de confianza.\n\n**Enganche:** Presenta una situación motivadora relacionada con el tema.\n\n**Saberes previos:** Pregunta qué saben sobre el tema y registra sus ideas en la pizarra.\n\n**Conflicto cognitivo:** Plantea una pregunta que desestabilice sus ideas previas.\n\n**Propósito:** Comunica: «Hoy vamos a aprender...». Presenta los criterios de éxito."
+            narrativa_docente: `**Bienvenida:** Recibe a los estudiantes con un saludo personalizado y cálido. Recuérdales lo trabajado en la sesión anterior sobre temas relacionados y cómo esto se conecta con lo que aprenderán hoy. Genera un ambiente de confianza mediante una breve dinámica de activación que los prepare para el aprendizaje.
+
+**Enganche:** Presenta una situación motivadora relacionada con ${tema}. Muéstrales una imagen, un video corto, o plantea una situación problemática de la vida real que capture su atención. Observa sus reacciones y permite que comenten libremente sus primeras impresiones. Pregunta: «¿Qué observan aquí?», «¿Qué les llama la atención?».
+
+**Saberes previos:** Plantea preguntas para activar los conocimientos previos: «¿Qué saben ustedes sobre ${tema}?», «¿Han visto algo parecido en su comunidad o en su vida diaria?», «¿Qué les viene a la mente cuando escuchan este tema?». Registra sus respuestas en la pizarra organizándolas en un mapa mental o lluvia de ideas. Valora todas las participaciones sin corregir en este momento.
+
+**Conflicto cognitivo:** Presenta una pregunta desafiante que desestabilice sus ideas previas: «Si lo que dicen es cierto, entonces ¿cómo explicamos que...?», «¿Qué pasaría si...?». Permite que experimenten la disonancia cognitiva sin darles la respuesta directa. Observa sus reacciones y registra las nuevas preguntas que surjan.
+
+**Propósito:** Comunica el propósito de la sesión de forma clara y en lenguaje estudiantil: «Hoy vamos a aprender a aplicar estrategias para resolver situaciones relacionadas con ${tema}. Al finalizar, serán capaces de [desempeño esperado]». Presenta los criterios de éxito de forma visible en la pizarra o papelógrafo.
+
+**Transición:** Recuerda las normas de convivencia acordadas y selecciona con ellos las más relevantes para esta sesión. Organiza la transición al desarrollo indicando cómo se organizarán para el trabajo.`
           },
           { 
             fase: "DESARROLLO",
-            duracion: `${Math.max((duracion || 55) - 25, 30)} min`,
+            duracion: `${desarrolloMin} min`,
             organizacion: "En equipos de 4",
             metodologia_activa: {
               nombre: "Aprendizaje Cooperativo",
-              justificacion: "Promueve la construcción colectiva del conocimiento"
+              justificacion: "Promueve la construcción colectiva del conocimiento mediante la interacción entre pares y el desarrollo de habilidades sociales"
             },
-            narrativa_docente: "**Organización:** Forma equipos de 4 integrantes. Asigna roles: coordinador, secretario, portavoz y verificador.\n\n**Consigna:** Indica: «Tienen 20 minutos para...».\n\n**Mediación:** Circula por el aula haciendo preguntas de sondeo.\n\n**Consolidación:** Guía la elaboración del producto final."
+            narrativa_docente: `**Organización del aula:** Forma equipos de 4 integrantes considerando la diversidad de niveles de aprendizaje. Asigna roles claros a cada integrante: un coordinador que gestiona los tiempos y la participación, un secretario que registra las ideas y acuerdos, un portavoz que presentará al grupo, y un verificador que asegura que todos comprendan. Entrega a cada estudiante una tarjeta con su rol y sus funciones.
+
+**Entrega de materiales:** Distribuye el material de trabajo a cada equipo. Asegúrate de que todos tengan los recursos necesarios antes de dar la consigna principal. Verifica que entiendan cómo usar los materiales.
+
+**Consigna principal:** Indica con claridad la tarea: «Tienen ${Math.round(desarrolloMin * 0.6)} minutos para trabajar en equipo. Su tarea es [descripción específica de la tarea relacionada con ${tema}]. Al finalizar, deben tener [producto esperado]. Recuerden que cada uno tiene un rol y todos deben participar activamente. ¿Hay alguna pregunta antes de empezar?».
+
+**Mediación durante el trabajo:** Circula por el aula observando los procedimientos de cada equipo. Haz preguntas de mediación que promuevan el pensamiento: «¿Cómo llegaron a esa conclusión?», «¿Qué pasaría si cambiaran este dato?», «¿Hay otra forma de resolverlo?», «¿Todos están de acuerdo? ¿Por qué?», «¿Qué evidencia tienen para afirmar eso?».
+
+**Gestión de errores comunes:** Si detectas que varios equipos cometen el mismo error, pausa brevemente la actividad y dirige la atención del grupo: «He notado que varios grupos están [describir sin señalar]. Veamos juntos: [pregunta guía sin dar la respuesta directa]. ¿Qué podríamos hacer diferente?».
+
+**Atención a la diversidad:** Para los estudiantes que avanzan rápidamente, ofrece un reto adicional de extensión: «Ya que terminaron, ¿podrían pensar en [reto más complejo]?». Para quienes necesitan más apoyo, acércate y proporciona andamiaje adicional: simplifica la consigna, ofrece un ejemplo resuelto como referencia, o asigna un par tutor del mismo equipo.
+
+**Productos parciales:** Verifica que los equipos vayan generando productos intermedios. Cada 10 minutos aproximadamente, pide que muestren su avance: «Muestren con la mano levantada si ya completaron el paso 1». Esto te permite identificar equipos que necesitan apoyo.
+
+**Retroalimentación formativa:** Ofrece retroalimentación específica y oportuna mientras circulás: «Muy bien el procedimiento que usaron, ahora piensen en cómo podrían verificar su respuesta», «Este paso está correcto, pero ¿qué pasa con [aspecto a mejorar]?», «Me gusta cómo están trabajando en equipo».
+
+**Consolidación:** Cuando falten 5 minutos para el cierre del desarrollo, anuncia: «Tienen 5 minutos para completar su producto final. Asegúrense de que esté listo para compartir con el grupo. El portavoz debe preparar una breve explicación de cómo trabajaron».
+
+**Transición al cierre:** Indica que es momento de socializar los productos. Pide que ordenen sus espacios, guarden los materiales y se preparen para las presentaciones.`
           },
           { 
             fase: "CIERRE",
-            duracion: "10 min",
+            duracion: `${cierreMin} min`,
             organizacion: "En grupo clase",
-            narrativa_docente: "**Socialización:** Organiza la presentación de productos.\n\n**Metacognición:** Pregunta: «¿Qué aprendimos hoy?», «¿Cómo lo aprendimos?».\n\n**Verificación:** Retoma los criterios de éxito del inicio.\n\n**Cierre:** Sintetiza las ideas clave y anticipa la próxima sesión."
+            narrativa_docente: `**Socialización de productos:** Organiza las presentaciones de los equipos. Puedes usar la técnica de galería (todos colocan sus productos en un lugar visible y rotan observando) o presentaciones breves por equipo (2 minutos cada uno). Si usas galería, indica: «Cada equipo coloque su producto en su mesa. Ahora rotaremos en sentido horario observando los trabajos de los demás».
+
+**Observación guiada:** Mientras observan los productos de otros equipos, guía la observación con preguntas: «¿Qué similitudes encuentran entre los productos?», «¿Qué estrategias diferentes usaron los equipos?», «¿Qué les llama la atención?», «¿Hay algo que otro equipo hizo que les gustaría haber pensado?».
+
+**Metacognición:** Facilita la reflexión sobre el proceso de aprendizaje con preguntas como: «¿Qué aprendimos hoy sobre ${tema}?», «¿Cómo lo aprendimos? ¿Qué pasos seguimos?», «¿Qué fue lo más difícil y cómo lo resolvieron?», «¿Qué estrategia les funcionó mejor?», «¿Dónde pueden usar esto fuera del colegio?». Permite que varios estudiantes compartan sus reflexiones.
+
+**Verificación del propósito:** Retoma los criterios de éxito planteados al inicio y pregunta: «Revisemos nuestro propósito inicial. ¿Logramos lo que nos propusimos? ¿Cómo lo sabemos?». Permite que los estudiantes evalúen su propio desempeño levantando la mano o con una escala de autoevaluación rápida.
+
+**Síntesis de ideas clave:** Resume o pide a los estudiantes que resuman las ideas principales de la sesión. Escríbelas de forma visible en la pizarra: «Entonces, las ideas más importantes de hoy son...». Verifica que todos las hayan registrado.
+
+**Conexión con próxima sesión:** Anticipa lo que trabajarán en la siguiente clase: «La próxima clase profundizaremos en [tema siguiente]. Usaremos lo que aprendimos hoy para [conexión]. Piensen en [tarea de reflexión]».
+
+**Recojo de evidencias y cierre motivador:** Recoge los productos de los equipos para revisarlos y proporcionar retroalimentación escrita. Despide a los estudiantes con un mensaje positivo y motivador: «Hoy demostraron que pueden trabajar en equipo y resolver situaciones complejas. ¡Excelente trabajo! Los felicito por su esfuerzo y participación».`
           }
         ],
         adaptaciones_sugeridas: {
-          estrategias_diferenciadas: adaptaciones?.length ? `Estrategias para: ${adaptaciones.join(', ')}` : "Sin adaptaciones específicas",
-          apoyo_adicional: [],
-          extension_avanzados: [],
-          recursos_apoyo: []
+          estrategias_diferenciadas: adaptaciones?.length 
+            ? `Para atender a estudiantes con ${adaptaciones.join(', ')}, se aplican principios de Diseño Universal para el Aprendizaje (DUA): múltiples formas de presentación (visual, auditiva, kinestésica), múltiples formas de expresión (oral, escrita, gráfica), y múltiples formas de motivación (elección, relevancia personal, metas claras). Las adaptaciones específicas se integran en cada momento de la sesión.`
+            : "Se aplican principios de Diseño Universal para el Aprendizaje (DUA) para atender la diversidad del aula: múltiples formas de presentación, expresión y motivación.",
+          por_tipo_nee: adaptaciones?.map(tipo => ({
+            tipo,
+            en_inicio: getAdaptacionInicio(tipo),
+            en_desarrollo: getAdaptacionDesarrollo(tipo),
+            en_cierre: getAdaptacionCierre(tipo)
+          })) || [],
+          apoyo_adicional: [
+            "Ofrecer instrucciones fragmentadas en pasos pequeños y secuenciados",
+            "Proporcionar materiales complementarios visuales (organizadores gráficos, mapas conceptuales)",
+            "Asignar un par tutor para apoyo entre iguales cuando sea apropiado",
+            "Verificar comprensión mediante parafraseo antes de iniciar cada actividad",
+            "Dar tiempo extra para procesar información y completar tareas"
+          ],
+          extension_avanzados: [
+            "Proponer retos de mayor complejidad cognitiva que requieran análisis o síntesis",
+            "Asignar rol de tutor par para apoyar a compañeros que lo necesiten",
+            "Ofrecer investigación adicional sobre aspectos avanzados del tema",
+            "Conectar con problemas más abstractos, generalizables o de otros campos del conocimiento"
+          ],
+          recursos_apoyo: [
+            "Organizadores gráficos para estructurar información compleja",
+            "Tarjetas de apoyo con pasos del procedimiento y ejemplos",
+            "Timer visual para gestión del tiempo y anticipación de transiciones",
+            "Listas de verificación para autoevaluación del progreso"
+          ]
         }
       };
     }
