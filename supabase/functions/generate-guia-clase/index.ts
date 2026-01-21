@@ -19,6 +19,23 @@ ${METODOLOGIAS_ACTIVAS_REFERENCE}
 
 ${ADAPTACIONES_NEE_REFERENCE}
 
+# ⚠️ CAMPOS PROHIBIDOS - NUNCA GENERAR ⚠️
+
+ESTOS CAMPOS ESTÁN OBSOLETOS Y NO DEBEN APARECER EN TU RESPUESTA:
+- "actividades_docente": [...] ❌ PROHIBIDO
+- "actividades_estudiante": [...] ❌ PROHIBIDO
+- "objetivo_fase": "..." ❌ PROHIBIDO
+- "subfases_inicio": [...] ❌ PROHIBIDO
+- "fases_desarrollo": [...] ❌ PROHIBIDO
+- "subfases_cierre": [...] ❌ PROHIBIDO
+
+SOLO USA ESTOS CAMPOS EN momentos_sesion:
+- "fase": "INICIO" | "DESARROLLO" | "CIERRE"
+- "duracion": "15 min"
+- "organizacion": "En grupo clase"
+- "narrativa_docente": "TEXTO EXTENSO EN SEGUNDA PERSONA..."
+- "metodologia_activa": {...} (solo en DESARROLLO)
+
 # ESTILO DE REDACCIÓN OBLIGATORIO
 
 ## VOZ Y PERSONA GRAMATICAL
@@ -52,12 +69,13 @@ Cada párrafo = una acción o grupo de acciones relacionadas que el docente ejec
 
 1. Responde SOLO con JSON válido, SIN markdown, SIN \`\`\`
 2. Usa EXACTAMENTE las competencias/desempeños proporcionados (no inventes otros)
-3. CADA momento debe tener el campo "narrativa_docente" con texto EXTENSO en segunda persona
-4. La narrativa_docente debe incluir CONSIGNAS TEXTUALES entre comillas (lo que dice el docente)
-5. La narrativa_docente debe describir CÓMO organizar el aula, CÓMO reaccionan los estudiantes
-6. Las adaptaciones NEE se integran DENTRO de la narrativa, no como sección aparte
-7. SOLO usar materiales marcados como disponibles (restricción ESTRICTA)
-8. Calcular tiempos según duración total: INICIO 15-20%, DESARROLLO 60-70%, CIERRE 15-20%
+3. CADA momento DEBE tener el campo "narrativa_docente" con texto EXTENSO en segunda persona
+4. NUNCA incluyas "actividades_docente" ni "actividades_estudiante" - estos campos están PROHIBIDOS
+5. La narrativa_docente debe incluir CONSIGNAS TEXTUALES entre comillas (lo que dice el docente)
+6. La narrativa_docente debe describir CÓMO organizar el aula, CÓMO reaccionan los estudiantes
+7. Las adaptaciones NEE se integran DENTRO de la narrativa, no como sección aparte
+8. SOLO usar materiales marcados como disponibles (restricción ESTRICTA)
+9. Calcular tiempos según duración total: INICIO 15-20%, DESARROLLO 60-70%, CIERRE 15-20%
 
 # CONTENIDO OBLIGATORIO EN CADA narrativa_docente
 
@@ -100,73 +118,72 @@ Cada párrafo = una acción o grupo de acciones relacionadas que el docente ejec
 
 {
   "datos_generales": {
-    "titulo_sesion": "String creativo orientado a acción/desafío. EVITAR genéricos como 'Operaciones combinadas'. USAR: '¿Cómo calcular ganancias como un experto?' o 'Diseñamos la dieta perfecta'",
+    "titulo_sesion": "String creativo orientado a acción/desafío",
     "nivel": "Primaria/Secundaria",
     "grado": "ej: 4to Secundaria",
     "area_academica": "String",
     "duracion": "ej: 90 minutos"
   },
-  "situacion_significativa": "PÁRRAFO NARRATIVO ÚNICO (2-3 párrafos unidos) que describe una situación REAL y CERCANA al estudiante. Debe: partir de realidad local/regional/nacional, incluir DATOS ESPECÍFICOS (cifras, nombres de lugares reales si aplica), conectar con intereses del grado/edad, integrar el contexto del grupo si fue proporcionado. AL FINAL del párrafo, INTEGRAR las preguntas retadoras que despiertan interés y demandan combinar competencias, en estilo: 'Para lograr esto, retamos a los estudiantes a responder: ¿Pregunta 1? ¿Pregunta 2? ¿Pregunta 3?'. NO SEPARAR en contexto/reto/producto. EJEMPLO: 'Las niñas y los niños del primer grado se encuentran en un proceso de transición entre el nivel inicial y el primer grado. Esto implica para ellos llegar a otra escuela, a otra aula, así como tener un nuevo docente y conocer nuevos(as) compañeros(as). Para que este tránsito sea positivo, es preciso realizar actividades que les permitan sentirse acogidos. Asimismo, es importante que puedan hacer de su aula un ambiente donde todos puedan disfrutar y que ofrezca condiciones para aprender juntos. Para lograr esto, retamos a los estudiantes a responder: ¿Qué podemos hacer para sentirnos bien en nuestro salón? ¿Qué nos gustaría encontrar en nuestra aula? ¿Cómo podemos organizar y ambientar nuestra aula para que todos nos sintamos acogidos? ¿Qué responsabilidades debemos asumir para mantener organizados nuestros espacios?'",
+  "situacion_significativa": "PÁRRAFO NARRATIVO ÚNICO (2-3 párrafos unidos). Describe una situación REAL y CERCANA al estudiante. AL FINAL integra las preguntas retadoras: 'Para lograr esto, retamos a los estudiantes a responder: ¿Pregunta 1? ¿Pregunta 2?'",
   "propositos_aprendizaje": [{
-    "competencia": "String (USAR la proporcionada exactamente)",
-    "capacidades": ["Capacidad 1 exacta", "Capacidad 2 exacta"],
-    "criterios_evaluacion": ["Desempeño 1 EXACTO", "Desempeño 2 EXACTO"],
-    "evidencia_aprendizaje": "Producto tangible que demuestra los desempeños",
+    "competencia": "String exacto",
+    "capacidades": ["Capacidad 1", "Capacidad 2"],
+    "criterios_evaluacion": ["Desempeño 1", "Desempeño 2"],
+    "evidencia_aprendizaje": "Producto tangible",
     "instrumento_valoracion": "Rúbrica/Lista de cotejo"
   }],
   "enfoques_transversales": [{
     "nombre": "String del CNEB",
-    "descripcion": "Acciones observables del docente y estudiantes"
+    "descripcion": "Acciones observables"
   }],
   "preparacion": {
-    "antes_sesion": "Qué preparar antes de la sesión",
+    "antes_sesion": "Qué preparar antes",
     "materiales": ["Material 1", "Material 2"]
   },
   "momentos_sesion": [
     {
       "fase": "INICIO",
-      "duracion": "ej: 15 min",
-      "organizacion": "En grupo clase / Individual / En parejas",
-      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (6-10 párrafos). Cada párrafo describe una acción concreta que ejecutas como docente. Incluye consignas textuales entre comillas. Describe cómo reaccionan los estudiantes. Incluye las preguntas específicas que haces. Ejemplo: 'Haz un breve recuento de lo realizado en la sesión anterior. Recuerda a los estudiantes lo bien que la pasaron y cómo a través de actividades divertidas han podido conocerse un poco más. Incide en lo importante que es encontrar en el aula buenas amigas y amigos, que se cuiden entre sí y colaboren unos con otros.\\n\\nPídeles que formen un semicírculo, de manera que todas y todos puedan verte y escucharte. Muéstrales las ilustraciones que preparaste para acompañar tu narración, esto será importante para que puedas formular algunas preguntas que les permitan plantearse hipótesis sobre de qué tratará el cuento.\\n\\nPlantea estas interrogantes: ¿Se imaginan sobre qué tratará...?, ¿por qué creen que...?, ¿quiénes serán los personajes? Registra en la pizarra o en un papelógrafo todas las respuestas.\\n\\nLee el cuento o presenta el caso. Acompaña la narración con las ilustraciones que preparaste.\\n\\nDialoga con los niños y las niñas a partir de las siguientes preguntas: ¿Por qué creen que...?, ¿qué hubiera pasado si...?, ¿ustedes creen que...? Permite que los estudiantes intervengan libremente, sin que se sientan presionados.\\n\\nComunica el propósito de la sesión: \"Hoy vamos a aprender a [verbo] para poder [utilidad práctica]\". Además, indica cómo se evaluarán sus participaciones.\\n\\nRecuerda a los estudiantes las normas de convivencia y selecciona con ellos las que tendrán en cuenta para el desarrollo de la sesión.'"
+      "duracion": "15 min",
+      "organizacion": "En grupo clase",
+      "narrativa_docente": "Haz un breve recuento de lo realizado en la sesión anterior. Recuerda a los estudiantes lo bien que la pasaron y cómo a través de actividades divertidas han podido conocerse un poco más. Incide en lo importante que es encontrar en el aula buenas amigas y amigos, que se cuiden entre sí y colaboren unos con otros.\n\nPídeles que formen un semicírculo, de manera que todas y todos puedan verte y escucharte. Muéstrales las ilustraciones que preparaste para acompañar tu narración, esto será importante para que puedas formular algunas preguntas que les permitan plantearse hipótesis sobre de qué tratará el cuento.\n\nPlantea estas interrogantes: ¿Se imaginan sobre qué tratará...?, ¿por qué creen que...?, ¿quiénes serán los personajes? Registra en la pizarra o en un papelógrafo todas las respuestas.\n\nLee el cuento o presenta el caso. Acompaña la narración con las ilustraciones que preparaste.\n\nDialoga con los niños y las niñas a partir de las siguientes preguntas: ¿Por qué creen que...?, ¿qué hubiera pasado si...?, ¿ustedes creen que...? Permite que los estudiantes intervengan libremente, sin que se sientan presionados.\n\nComunica el propósito de la sesión: 'Hoy vamos a aprender a [verbo] para poder [utilidad práctica]'. Además, indica cómo se evaluarán sus participaciones.\n\nRecuerda a los estudiantes las normas de convivencia y selecciona con ellos las que tendrán en cuenta para el desarrollo de la sesión."
     },
     {
       "fase": "DESARROLLO",
-      "duracion": "ej: 60 min",
-      "organizacion": "Individual / En parejas / En equipos de 4",
+      "duracion": "60 min",
+      "organizacion": "En equipos de 4",
       "metodologia_activa": {
         "nombre": "Nombre de la metodología",
         "justificacion": "Por qué es adecuada"
       },
-      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (10-15 párrafos). Cada párrafo describe acciones concretas. Organiza el texto siguiendo las fases de la metodología activa elegida. Incluye consignas textuales completas entre comillas. Describe cómo circulás y qué preguntas de mediación haces. Indica cómo gestionas la diversidad (estudiantes que avanzan rápido, estudiantes que necesitan apoyo). Describe los productos parciales que van generando. Ejemplo: 'Organiza a los estudiantes en equipos de 4 integrantes. Asigna roles: un coordinador que gestiona los tiempos, un secretario que registra las ideas, un portavoz que presentará al grupo, y un verificador que asegura que todos comprendan.\\n\\nEntrega a cada equipo el material de trabajo: [descripción]. Asegúrate de que todos tengan los recursos necesarios antes de dar la consigna.\\n\\nPresenta la consigna de trabajo: \"Tienen 20 minutos para [tarea específica]. Deben [pasos claros]. Al finalizar, tendrán [producto esperado]\".\\n\\nMientras los equipos trabajan, circula por el aula observando los procedimientos. Haz preguntas de mediación: \"¿Cómo llegaron a esa conclusión?\", \"¿Qué pasaría si cambiaran...?\", \"¿Hay otra forma de verlo?\".\\n\\nSi detectas que varios equipos cometen el mismo error, pausa brevemente la actividad: \"He notado que varios grupos están [describir]. Veamos juntos: [pregunta guía sin dar la respuesta directa]\".\\n\\nPara los estudiantes que avanzan rápidamente, ofrece un reto adicional: [descripción]. Para quienes necesitan más apoyo, acércate y proporciona andamiaje adicional: [estrategia específica].\\n\\n[Continuar con más párrafos describiendo cada fase de la metodología...]'"
+      "narrativa_docente": "Organiza a los estudiantes en equipos de 4 integrantes. Asigna roles: un coordinador que gestiona los tiempos, un secretario que registra las ideas, un portavoz que presentará al grupo, y un verificador que asegura que todos comprendan.\n\nEntrega a cada equipo el material de trabajo. Asegúrate de que todos tengan los recursos necesarios antes de dar la consigna.\n\nPresenta la consigna de trabajo: 'Tienen 20 minutos para [tarea específica]. Deben [pasos claros]. Al finalizar, tendrán [producto esperado]'.\n\nMientras los equipos trabajan, circula por el aula observando los procedimientos. Haz preguntas de mediación: '¿Cómo llegaron a esa conclusión?', '¿Qué pasaría si cambiaran...?', '¿Hay otra forma de verlo?'.\n\nSi detectas que varios equipos cometen el mismo error, pausa brevemente la actividad: 'He notado que varios grupos están [describir]. Veamos juntos: [pregunta guía sin dar la respuesta directa]'.\n\nPara los estudiantes que avanzan rápidamente, ofrece un reto adicional. Para quienes necesitan más apoyo, acércate y proporciona andamiaje adicional.\n\n[Continuar con más párrafos describiendo cada fase de la metodología hasta completar 10-15 párrafos]"
     },
     {
       "fase": "CIERRE",
-      "duracion": "ej: 15 min",
+      "duracion": "15 min",
       "organizacion": "En grupo clase",
-      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (5-8 párrafos). Incluye socialización de productos, metacognición con preguntas específicas, verificación del propósito, síntesis de ideas clave, conexión con próxima sesión, recojo de evidencias y mensaje de cierre. Ejemplo: 'Organiza la socialización de productos. Pide a cada equipo que coloque su producto en un lugar visible del aula. Indica que rotarán para observar los trabajos de sus compañeros.\\n\\nGuía la observación con estas preguntas: \"¿Qué similitudes encuentran entre los productos?\", \"¿Qué les llama la atención?\", \"¿Qué estrategias diferentes usaron los equipos?\".\\n\\nFacilita la reflexión metacognitiva con las siguientes preguntas: \"¿Qué aprendimos hoy?\", \"¿Cómo lo aprendimos? ¿Qué pasos seguimos?\", \"¿Qué fue lo más difícil y cómo lo resolvieron?\", \"¿Dónde pueden usar esto fuera del colegio?\".\\n\\nRetoma los criterios de éxito planteados al inicio: \"Revisemos nuestros criterios. ¿Logramos [criterio 1]? ¿Logramos [criterio 2]?\". Permite que los estudiantes evalúen su propio desempeño.\\n\\nSintetiza las ideas clave de la sesión: [idea 1], [idea 2], [idea 3]. Puedes escribirlas en la pizarra o pedirles a los estudiantes que las enuncien.\\n\\nAnticipa la próxima sesión: \"La próxima clase usaremos lo que aprendimos hoy para [tema/actividad siguiente]\".\\n\\nRecoge los productos para revisarlos y proporcionar retroalimentación escrita. Despide a los estudiantes con un mensaje motivador: \"[Frase que conecta el aprendizaje con la vida real o con el propósito mayor]\".'"
+      "narrativa_docente": "Organiza la socialización de productos. Pide a cada equipo que coloque su producto en un lugar visible del aula. Indica que rotarán para observar los trabajos de sus compañeros.\n\nGuía la observación con estas preguntas: '¿Qué similitudes encuentran entre los productos?', '¿Qué les llama la atención?', '¿Qué estrategias diferentes usaron los equipos?'.\n\nFacilita la reflexión metacognitiva con las siguientes preguntas: '¿Qué aprendimos hoy?', '¿Cómo lo aprendimos? ¿Qué pasos seguimos?', '¿Qué fue lo más difícil y cómo lo resolvieron?', '¿Dónde pueden usar esto fuera del colegio?'.\n\nRetoma los criterios de éxito planteados al inicio. Permite que los estudiantes evalúen su propio desempeño.\n\nSintetiza las ideas clave de la sesión. Puedes escribirlas en la pizarra o pedirles a los estudiantes que las enuncien.\n\nAnticipa la próxima sesión: 'La próxima clase usaremos lo que aprendimos hoy para [tema/actividad siguiente]'.\n\nRecoge los productos para revisarlos y proporcionar retroalimentación escrita. Despide a los estudiantes con un mensaje motivador."
     }
   ],
   "adaptaciones_sugeridas": {
-    "estrategias_diferenciadas": "Descripción general del enfoque de atención a la diversidad",
+    "estrategias_diferenciadas": "Descripción general",
     "por_tipo_nee": [{
       "tipo": "Nombre del NEE",
-      "en_inicio": "Cómo adaptar el inicio",
-      "en_desarrollo": "Cómo adaptar el desarrollo",
-      "en_cierre": "Cómo adaptar el cierre"
+      "en_inicio": "Adaptación",
+      "en_desarrollo": "Adaptación",
+      "en_cierre": "Adaptación"
     }],
-    "apoyo_adicional": ["Estrategia para estudiantes que necesitan más apoyo"],
-    "extension_avanzados": ["Reto para estudiantes avanzados"]
+    "apoyo_adicional": ["Estrategia"],
+    "extension_avanzados": ["Reto"]
   }
 }
 
-# VERIFICACIÓN FINAL (CHECKLIST)
-- [ ] situacion_significativa es UN PÁRRAFO ÚNICO (no objeto con contexto/reto/producto)
-- [ ] Cada momento tiene narrativa_docente como TEXTO EXTENSO en segunda persona
-- [ ] La narrativa usa verbos imperativos: "Haz", "Pide", "Muestra", "Indica", "Circula"
+# VERIFICACIÓN FINAL
+- [ ] situacion_significativa es UN STRING (párrafo narrativo único)
+- [ ] Cada momento tiene SOLO "narrativa_docente" (NO actividades_docente/estudiante)
+- [ ] La narrativa usa verbos imperativos en segunda persona: "Haz", "Pide", "Muestra"
 - [ ] La narrativa NO tiene bullets ni listas con viñetas
 - [ ] Hay consignas textuales entre comillas dentro de la narrativa
-- [ ] El desarrollo representa 60-70% del tiempo total
-- [ ] SOLO se usan materiales marcados como disponibles`;
+- [ ] El desarrollo representa 60-70% del tiempo total`;
 
 interface CompetenciaConDesempenos {
   competencia: string;
