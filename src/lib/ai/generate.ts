@@ -20,8 +20,8 @@ export interface GuiaClaseData {
     area_academica: string;
     duracion: string;
   };
-  // NEW: Situación significativa con contexto, reto y producto
-  situacion_significativa?: {
+  // Situación significativa como string único (párrafo narrativo) o objeto legacy
+  situacion_significativa?: string | {
     contexto: string;
     reto: string;
     producto: string;
@@ -47,11 +47,15 @@ export interface GuiaClaseData {
   momentos_sesion: Array<{
     fase: 'INICIO' | 'DESARROLLO' | 'CIERRE';
     duracion: string;
-    actividades: string; // Legacy fallback
+    organizacion?: string; // "En grupo clase", "Individual", "En parejas", "En equipos de X"
+    // NEW: Texto narrativo extenso en segunda persona (formato guión)
+    narrativa_docente?: string;
+    // Legacy fields for backward compatibility
+    actividades: string;
     objetivo_fase?: string;
     actividades_docente?: string[];
     actividades_estudiante?: string[];
-    // NEW CognitIA fields for INICIO
+    // CognitIA fields for INICIO
     estrategia_motivacion?: {
       tipo: string;
       descripcion: string;
@@ -60,7 +64,7 @@ export interface GuiaClaseData {
     conexion_saberes_previos?: string;
     proposito_comunicado?: string;
     consigna_textual?: string;
-    // NEW CognitIA fields for DESARROLLO
+    // CognitIA fields for DESARROLLO
     metodologia_activa?: {
       nombre: string;
       justificacion: string;
@@ -82,7 +86,7 @@ export interface GuiaClaseData {
       preguntas_sondeo: string[];
       gestion_error: string;
     };
-    // NEW CognitIA fields for CIERRE
+    // CognitIA fields for CIERRE
     socializacion?: {
       estrategia: string;
       descripcion: string;

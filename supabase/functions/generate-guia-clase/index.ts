@@ -19,111 +19,75 @@ ${METODOLOGIAS_ACTIVAS_REFERENCE}
 
 ${ADAPTACIONES_NEE_REFERENCE}
 
+# ESTILO DE REDACCIÓN OBLIGATORIO
+
+## VOZ Y PERSONA GRAMATICAL
+- USA SEGUNDA PERSONA SINGULAR dirigida al docente: "Haz...", "Pídeles...", "Pregunta...", "Observa...", "Indica...", "Recibe a los estudiantes...", "Muéstrales..."
+- NO uses tercera persona: "El docente hace..." ❌
+- NO uses bullets ni listas con viñetas para las actividades ❌
+- USA párrafos narrativos continuos ✅ (como un guión/script que el docente lee y ejecuta)
+
+## NIVEL DE DETALLE EN narrativa_docente
+Cada momento debe ser un TEXTO NARRATIVO EXTENSO en segunda persona, tipo guión de clase:
+- **INICIO**: Mínimo 6-10 párrafos narrativos
+- **DESARROLLO**: Mínimo 10-15 párrafos narrativos  
+- **CIERRE**: Mínimo 5-8 párrafos narrativos
+
+Cada párrafo = una acción o grupo de acciones relacionadas que el docente ejecuta.
+
+## FORMATO DE PÁRRAFOS (EJEMPLOS)
+"Inicia la sesión dando la bienvenida a los estudiantes. Recuérdales lo trabajado en la sesión anterior sobre [tema] y cómo esto se conecta con lo que aprenderán hoy. Genera un ambiente de confianza mediante un saludo personalizado."
+
+"Pídeles que formen un semicírculo, de manera que todas y todos puedan verte y escucharte. Muéstrales las ilustraciones que preparaste para acompañar tu narración. Esto será importante para que puedas formular algunas preguntas que les permitan plantearse hipótesis sobre de qué tratará la actividad."
+
+"Plantea estas interrogantes: ¿Se imaginan sobre qué tratará...?, ¿por qué creen que...?, ¿quiénes serán los protagonistas?, ¿para qué haremos esta actividad? Registra en la pizarra o en un papelógrafo todas las respuestas. Permite que los estudiantes intervengan libremente, sin que se sientan presionados."
+
+"Dialoga con los niños y las niñas a partir de las siguientes preguntas: ¿Por qué creen que...?, ¿qué pasaría si...?, ¿cómo podríamos...? Escucha atentamente sus respuestas y anótalas en la pizarra organizándolas en categorías."
+
+"Comunica el propósito de la sesión: 'Hoy vamos a aprender a [verbo] para poder [utilidad]'. Además, indica cómo se evaluarán sus participaciones. Menciona que deberán pensar muy bien qué harán al inicio, qué harán luego y qué harán al final."
+
+"Recuerda a los estudiantes las normas de convivencia establecidas y selecciona con ellos las que podrían tener en cuenta para el buen desarrollo de la presente sesión."
+
 # REGLAS CRÍTICAS DE GENERACIÓN
 
 1. Responde SOLO con JSON válido, SIN markdown, SIN \`\`\`
 2. Usa EXACTAMENTE las competencias/desempeños proporcionados (no inventes otros)
-3. Incluye CONSIGNAS TEXTUALES en cada fase (lo que dice el docente EXACTAMENTE, entre comillas)
-4. Cada fase del DESARROLLO debe tener PRODUCTO PARCIAL tangible
-5. Las adaptaciones NEE se integran DENTRO de cada momento, NO como anexo separado
-6. SOLO usar materiales marcados como disponibles (restricción ESTRICTA)
-7. La metodología activa ESTRUCTURA todo el desarrollo (no es decoración, organiza las fases)
+3. CADA momento debe tener el campo "narrativa_docente" con texto EXTENSO en segunda persona
+4. La narrativa_docente debe incluir CONSIGNAS TEXTUALES entre comillas (lo que dice el docente)
+5. La narrativa_docente debe describir CÓMO organizar el aula, CÓMO reaccionan los estudiantes
+6. Las adaptaciones NEE se integran DENTRO de la narrativa, no como sección aparte
+7. SOLO usar materiales marcados como disponibles (restricción ESTRICTA)
 8. Calcular tiempos según duración total: INICIO 15-20%, DESARROLLO 60-70%, CIERRE 15-20%
 
-# FILOSOFÍA PEDAGÓGICA OBLIGATORIA
+# CONTENIDO OBLIGATORIO EN CADA narrativa_docente
 
-## MOMENTO INICIO (15-20% del tiempo) - 5 FASES OBLIGATORIAS
+## NARRATIVA DEL INICIO (6-10 párrafos) debe incluir:
+1. Bienvenida y generación de clima de aula (cómo recibes, qué dices)
+2. Enganche o captura de atención (estrategia específica: caso, pregunta, imagen, lectura)
+3. Activación de saberes previos (preguntas específicas, cómo registras respuestas)
+4. Generación de conflicto cognitivo (situación desestabilizadora, pregunta retadora)
+5. Comunicación del propósito (consigna textual del propósito en lenguaje estudiantil)
+6. Criterios de éxito y transición al desarrollo
 
-### FASE 1: Bienvenida y clima de aula (2-3 min)
-- El docente recibe a los estudiantes generando ambiente de confianza y seguridad
-- Estrategias: saludo personalizado, ritual de inicio establecido, música ambiental, imagen proyectada
-- Si hay NEE marcadas, incluir adaptación específica (ej: TEA → mostrar agenda visual del día)
+## NARRATIVA DEL DESARROLLO (10-15 párrafos) debe incluir:
+1. Organización del aula para la actividad principal (cómo distribuyes, qué materiales entregas)
+2. Presentación de la consigna de trabajo (instrucción COMPLETA y CLARA)
+3. Fases de la metodología activa aplicada (cada fase es 1-2 párrafos)
+4. Interacciones esperadas (qué hacen los estudiantes mientras circulás)
+5. Preguntas de mediación que haces mientras circulás
+6. Gestión de la diversidad integrada (cómo apoyas a quienes necesitan ayuda)
+7. Productos parciales que van generando
+8. Retroalimentación formativa durante el proceso
+9. Consolidación del producto final
+10. Transición hacia el cierre
 
-### FASE 2: Enganche y captura de atención (3-5 min)
-El docente ELIGE UNA estrategia para generar curiosidad e interés:
-- **Opción A - Caso/Situación real**: Narrar situación con datos específicos del Perú/localidad
-- **Opción B - Pregunta provocadora**: Generar disonancia cognitiva ("¿Qué pasaría si...?")
-- **Opción C - Imagen/Video/Objeto sorpresa**: Activar observación e hipótesis
-- **Opción D - Do Now escrito**: "Tienen 2 minutos para responder en silencio..."
-
-### FASE 3: Activación de saberes previos (3-5 min)
-- Estrategias: lluvia de ideas, TPS rápido, mapa mental colectivo, preguntas dirigidas
-- OBLIGATORIO: El docente REGISTRA las ideas en pizarra/papelote organizándolas en categorías
-- Consigna modelo: "Tienen 2 minutos para escribir TODO lo que saben sobre [tema]. No borren nada."
-
-### FASE 4: Conflicto cognitivo (2-3 min)
-- Presentar situación/dato/contraejemplo que desestabilice ideas previas
-- Generar la NECESIDAD de aprender algo nuevo
-- Pregunta tipo: "Si [idea previa], ¿por qué [situación contradictoria]? ¿Qué nos falta saber?"
-- El estudiante experimenta curiosidad o confusión productiva
-
-### FASE 5: Comunicación del propósito y criterios (2-3 min)
-- Propósito en LENGUAJE ESTUDIANTIL: "Hoy vamos a aprender a [verbo acción] para poder [utilidad práctica]"
-- Criterios de éxito VISIBLES en pizarra (máximo 3)
-- Un estudiante voluntario parafrasea para verificar comprensión
-- Transición: frase puente que genera expectativa ("Para resolver este desafío, vamos a...")
-
-## MOMENTO DESARROLLO (60-70% del tiempo) - ESTRUCTURA POR METODOLOGÍA ACTIVA
-
-### Selección de metodología (CONSULTAR MATRIZ DE REFERENCIA)
-1. Identificar objetivo principal de la sesión
-2. Consultar matriz → Metodología recomendada
-3. Aplicar estructura específica con TODOS sus componentes no negociables
-
-### Estructura de cada subfase del desarrollo (OBLIGATORIO para CADA una):
-- **Nombre descriptivo** + **duración en minutos**
-- **Organización del aula**: Individual / Parejas / Grupos de X integrantes
-- **Consigna textual EXACTA** entre comillas (lo que dice el docente)
-- **Actividades del docente**: Con rol específico (mediador/facilitador/modelador/observador)
-- **Actividades del estudiante**: Verbo específico + materiales que usa
-- **Producto parcial tangible**: Qué evidencia genera esta fase (notas, borrador, esquema, respuestas)
-- **Señal de transición**: Cómo indica el cambio de fase (campana, música, cuenta regresiva)
-
-### Roles cooperativos (SIEMPRE asignar cuando hay trabajo en equipo)
-| Rol | Responsabilidad |
-|-----|-----------------|
-| Coordinador | Gestiona tiempos y turnos de palabra |
-| Secretario | Registra ideas y acuerdos del equipo |
-| Portavoz | Presenta conclusiones al grupo general |
-| Controlador | Verifica que todos comprendan |
-
-### Retroalimentación formativa DURANTE el desarrollo
-- **Oral (circulación)**: "¿Cómo llegaste a esa conclusión?" "¿Qué pasaría si cambiaras...?"
-- **Entre pares**: Protocolo TAG (Tell-Ask-Give) o "Dos estrellas y un deseo"
-- **Gestión del error productivo**: "He notado que varios grupos están [error]. Veamos juntos: [pregunta guía, NO la respuesta]"
-
-### Gestión de la diversidad durante el desarrollo
-- **Estudiantes avanzados**: Extensión, rol de tutor par, investigación adicional, conexiones interdisciplinarias
-- **Estudiantes con apoyo adicional**: Andamiaje extra, material concreto, par tutor, guía paso a paso, más tiempo
-
-## MOMENTO CIERRE (15-20% del tiempo) - 4 FASES OBLIGATORIAS
-
-### FASE 1: Socialización de productos (5-8 min)
-El docente ELIGE UNA estrategia:
-- **Galería**: Productos expuestos, estudiantes rotan con guía de observación
-- **Plenario selectivo**: Docente selecciona 2-3 productos diversos para presentar (diversidad de estrategias, error corregido, solución creativa)
-- **Intercambio de productos**: Grupos evalúan productos de otros con checklist/rúbrica
-
-### FASE 2: Metacognición (5-7 min)
-El docente ELIGE UNA estrategia:
-- **Preguntas orales**: 
-  - "¿Qué aprendimos hoy?" → Verificación del propósito
-  - "¿Cómo lo aprendimos? ¿Qué pasos seguimos?" → Conciencia del proceso
-  - "¿Qué fue lo más difícil y cómo lo resolvieron?" → Gestión del error
-  - "¿Dónde pueden usar esto fuera del colegio?" → Transferencia
-- **Ticket de salida escrito**: "Hoy aprendí que... / Lo más útil fue... / Todavía tengo dudas sobre... / Esto me sirve para..."
-- **Rutina 3-2-1**: 3 cosas aprendidas, 2 cosas interesantes, 1 pregunta pendiente
-
-### FASE 3: Verificación del propósito y síntesis (3-5 min)
-- Retomar criterios de éxito del inicio: "¿Logramos el criterio 1? ¿El criterio 2?"
-- Síntesis de 2-3 ideas clave (el docente las enuncia O los estudiantes las construyen)
-- Conexión con próxima sesión: "La próxima clase usaremos esto para..."
-- Mensaje de cierre motivador que conecta aprendizaje con vida real
-
-### FASE 4: Recojo de evidencias y cierre administrativo (2-3 min)
-- Recoger productos/fichas/tickets para evaluación formativa posterior
-- Tarea de extensión (si aplica): clara, específica, con fecha de entrega
-- Despedida personalizada con reconocimiento del esfuerzo
+## NARRATIVA DEL CIERRE (5-8 párrafos) debe incluir:
+1. Socialización de productos (cómo comparten, qué observas)
+2. Preguntas de metacognición (qué aprendieron, cómo lo aprendieron, para qué les sirve)
+3. Verificación del propósito (retomar criterios de éxito)
+4. Síntesis de ideas clave (tú o los estudiantes las enuncian)
+5. Conexión con próxima sesión
+6. Recojo de evidencias y cierre con mensaje motivador
 
 # DISTRIBUCIÓN DEL TIEMPO
 | Momento | % | 45 min | 55 min | 90 min | 135 min |
@@ -136,201 +100,73 @@ El docente ELIGE UNA estrategia:
 
 {
   "datos_generales": {
-    "titulo_sesion": "String creativo orientado a acción/desafío (máx 15 palabras). REGLA: Evitar títulos genéricos como 'Operaciones combinadas'. USAR: '¿Cómo calcular ganancias como un experto?' o 'El misterio de los números que desaparecen'",
+    "titulo_sesion": "String creativo orientado a acción/desafío. EVITAR genéricos como 'Operaciones combinadas'. USAR: '¿Cómo calcular ganancias como un experto?' o 'Diseñamos la dieta perfecta'",
     "nivel": "Primaria/Secundaria",
     "grado": "ej: 4to Secundaria",
     "area_academica": "String",
     "duracion": "ej: 90 minutos"
   },
-  "situacion_significativa": {
-    "contexto": "1-2 párrafos con situación REAL y CERCANA al estudiante. Requisitos: partir de realidad local/nacional, incluir DATOS ESPECÍFICOS (cifras, nombres de lugares reales), conectar con intereses del grado/edad, integrar contexto del grupo si fue proporcionado, usar lenguaje narrativo que enganche.",
-    "reto": "PREGUNTA RETADORA que conecta con la competencia. Requisitos: clara y desafiante, alcanzable en el tiempo de la sesión, el producto la RESPONDE directamente.",
-    "producto": "Para responder a este desafío, los estudiantes elaborarán: [NOMBRE], que consiste en [descripción breve]. Este producto permitirá [propósito] y será evaluado mediante [instrumento]."
-  },
+  "situacion_significativa": "PÁRRAFO NARRATIVO ÚNICO (2-3 párrafos unidos) que describe una situación REAL y CERCANA al estudiante. Debe: partir de realidad local/regional/nacional, incluir DATOS ESPECÍFICOS (cifras, nombres de lugares reales si aplica), conectar con intereses del grado/edad, integrar el contexto del grupo si fue proporcionado. AL FINAL del párrafo, INTEGRAR las preguntas retadoras que despiertan interés y demandan combinar competencias, en estilo: 'Para lograr esto, retamos a los estudiantes a responder: ¿Pregunta 1? ¿Pregunta 2? ¿Pregunta 3?'. NO SEPARAR en contexto/reto/producto. EJEMPLO: 'Las niñas y los niños del primer grado se encuentran en un proceso de transición entre el nivel inicial y el primer grado. Esto implica para ellos llegar a otra escuela, a otra aula, así como tener un nuevo docente y conocer nuevos(as) compañeros(as). Para que este tránsito sea positivo, es preciso realizar actividades que les permitan sentirse acogidos. Asimismo, es importante que puedan hacer de su aula un ambiente donde todos puedan disfrutar y que ofrezca condiciones para aprender juntos. Para lograr esto, retamos a los estudiantes a responder: ¿Qué podemos hacer para sentirnos bien en nuestro salón? ¿Qué nos gustaría encontrar en nuestra aula? ¿Cómo podemos organizar y ambientar nuestra aula para que todos nos sintamos acogidos? ¿Qué responsabilidades debemos asumir para mantener organizados nuestros espacios?'",
   "propositos_aprendizaje": [{
-    "competencia": "String (USAR la proporcionada exactamente, sin modificar)",
+    "competencia": "String (USAR la proporcionada exactamente)",
     "capacidades": ["Capacidad 1 exacta", "Capacidad 2 exacta"],
-    "criterios_evaluacion": ["Desempeño 1 EXACTO como fue proporcionado", "Desempeño 2 EXACTO"],
-    "evidencia_aprendizaje": "Producto único y tangible que demuestra TODOS los desempeños",
-    "instrumento_valoracion": "Rúbrica/Lista de cotejo con criterios observables"
+    "criterios_evaluacion": ["Desempeño 1 EXACTO", "Desempeño 2 EXACTO"],
+    "evidencia_aprendizaje": "Producto tangible que demuestra los desempeños",
+    "instrumento_valoracion": "Rúbrica/Lista de cotejo"
   }],
   "enfoques_transversales": [{
-    "nombre": "String del CNEB (Derechos, Inclusivo, Intercultural, Igualdad de Género, Ambiental, Bien Común, Excelencia)",
-    "valor": "Valor asociado al enfoque",
-    "actitud_docente": "Acción OBSERVABLE y CONCRETA del docente durante la sesión",
-    "actitud_estudiante": "Acción OBSERVABLE y CONCRETA del estudiante durante la sesión"
+    "nombre": "String del CNEB",
+    "descripcion": "Acciones observables del docente y estudiantes"
   }],
   "preparacion": {
-    "antes_sesion": "Lista detallada de qué preparar/fotocopiar/organizar/revisar ANTES de la sesión",
-    "materiales": ["Material 1 (SOLO si está marcado como disponible)", "Material 2"]
+    "antes_sesion": "Qué preparar antes de la sesión",
+    "materiales": ["Material 1", "Material 2"]
   },
   "momentos_sesion": [
     {
       "fase": "INICIO",
-      "duracion": "ej: 15 min (calcular según 15-20% del total)",
-      "objetivo_fase": "Captar atención, activar saberes previos, generar conflicto cognitivo y comunicar el propósito con claridad",
-      "subfases_inicio": [
-        {
-          "nombre": "Bienvenida y clima de aula",
-          "duracion": "2-3 min",
-          "descripcion": "Cómo el docente recibe a los estudiantes y genera ambiente de confianza",
-          "consigna_textual": "Lo que dice el docente EXACTAMENTE"
-        },
-        {
-          "nombre": "Enganche y captura de atención",
-          "duracion": "3-5 min",
-          "tipo_estrategia": "caso_real|pregunta_provocadora|imagen_video|objeto_sorpresa|do_now",
-          "descripcion": "Descripción detallada de la estrategia elegida",
-          "consigna_textual": "Lo que dice el docente EXACTAMENTE"
-        },
-        {
-          "nombre": "Activación de saberes previos",
-          "duracion": "3-5 min",
-          "estrategia": "lluvia_ideas|TPS_rapido|mapa_mental|preguntas_dirigidas",
-          "preguntas_activacion": ["Pregunta 1 que conecta con experiencias", "Pregunta 2 que conecta con aprendizajes anteriores"],
-          "consigna_textual": "Lo que dice el docente EXACTAMENTE",
-          "registro": "Cómo y dónde se registran las ideas (pizarra, papelote, etc.)"
-        },
-        {
-          "nombre": "Conflicto cognitivo",
-          "duracion": "2-3 min",
-          "situacion_desestabilizadora": "Dato, contraejemplo o problema que no pueden resolver con lo que saben",
-          "pregunta_conflicto": "Si [idea previa], ¿por qué [contradicción]? ¿Qué nos falta saber?",
-          "reaccion_esperada": "Cómo reaccionan los estudiantes (curiosidad, confusión productiva)"
-        },
-        {
-          "nombre": "Comunicación del propósito",
-          "duracion": "2-3 min",
-          "proposito_estudiantil": "Hoy vamos a aprender a [verbo] para poder [utilidad práctica]. Al final serán capaces de [logro observable].",
-          "criterios_exito": ["Criterio 1 observable", "Criterio 2 observable", "Criterio 3 observable"],
-          "transicion_desarrollo": "Frase puente que genera expectativa hacia el desarrollo"
-        }
-      ],
-      "adaptaciones_inicio": ["Adaptación específica para NEE marcada en este momento"],
-      "actividades_docente": ["Resumen de acciones del docente en el inicio"],
-      "actividades_estudiante": ["Resumen de acciones de los estudiantes en el inicio"]
+      "duracion": "ej: 15 min",
+      "organizacion": "En grupo clase / Individual / En parejas",
+      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (6-10 párrafos). Cada párrafo describe una acción concreta que ejecutas como docente. Incluye consignas textuales entre comillas. Describe cómo reaccionan los estudiantes. Incluye las preguntas específicas que haces. Ejemplo: 'Haz un breve recuento de lo realizado en la sesión anterior. Recuerda a los estudiantes lo bien que la pasaron y cómo a través de actividades divertidas han podido conocerse un poco más. Incide en lo importante que es encontrar en el aula buenas amigas y amigos, que se cuiden entre sí y colaboren unos con otros.\\n\\nPídeles que formen un semicírculo, de manera que todas y todos puedan verte y escucharte. Muéstrales las ilustraciones que preparaste para acompañar tu narración, esto será importante para que puedas formular algunas preguntas que les permitan plantearse hipótesis sobre de qué tratará el cuento.\\n\\nPlantea estas interrogantes: ¿Se imaginan sobre qué tratará...?, ¿por qué creen que...?, ¿quiénes serán los personajes? Registra en la pizarra o en un papelógrafo todas las respuestas.\\n\\nLee el cuento o presenta el caso. Acompaña la narración con las ilustraciones que preparaste.\\n\\nDialoga con los niños y las niñas a partir de las siguientes preguntas: ¿Por qué creen que...?, ¿qué hubiera pasado si...?, ¿ustedes creen que...? Permite que los estudiantes intervengan libremente, sin que se sientan presionados.\\n\\nComunica el propósito de la sesión: \"Hoy vamos a aprender a [verbo] para poder [utilidad práctica]\". Además, indica cómo se evaluarán sus participaciones.\\n\\nRecuerda a los estudiantes las normas de convivencia y selecciona con ellos las que tendrán en cuenta para el desarrollo de la sesión.'"
     },
     {
       "fase": "DESARROLLO",
-      "duracion": "ej: 60 min (calcular según 60-70% del total)",
-      "objetivo_fase": "Construcción activa del aprendizaje mediante metodología seleccionada, producción de evidencias y retroalimentación formativa continua",
+      "duracion": "ej: 60 min",
+      "organizacion": "Individual / En parejas / En equipos de 4",
       "metodologia_activa": {
-        "nombre": "Nombre exacto de la metodología (ABPr Caso Rápido, Jigsaw, Mini-ABP, TPS, P4C, Gamificación, etc.)",
-        "justificacion": "Por qué esta metodología es la más adecuada para esta sesión (conectar con competencia, tipo de contenido, características del grupo)"
+        "nombre": "Nombre de la metodología",
+        "justificacion": "Por qué es adecuada"
       },
-      "fases_desarrollo": [
-        {
-          "nombre": "Nombre descriptivo de la subfase (ej: Investigación guiada, Producción del borrador, Retroalimentación entre pares)",
-          "duracion": "X min",
-          "organizacion": "Individual / Parejas / Grupos de X integrantes. Cómo se distribuyen los estudiantes.",
-          "consigna_textual": "Instrucción EXACTA del docente entre comillas. Debe ser clara, completa, con tiempos.",
-          "actividades_docente": ["Acción específica 1 con rol (mediador/facilitador/observador)", "Acción específica 2"],
-          "actividades_estudiante": ["Acción específica 1 con verbo + material", "Acción específica 2"],
-          "producto_parcial": "Qué evidencia tangible genera esta fase (notas, borrador, esquema, respuestas, mapa)",
-          "roles_cooperativos": [
-            {"rol": "Coordinador", "responsabilidad": "Gestiona tiempos y turnos"},
-            {"rol": "Secretario", "responsabilidad": "Registra ideas y acuerdos"},
-            {"rol": "Portavoz", "responsabilidad": "Presenta al grupo"},
-            {"rol": "Controlador", "responsabilidad": "Verifica comprensión de todos"}
-          ],
-          "senal_transicion": "Cómo indica el cambio de fase (campana, música, cuenta regresiva, palmada)"
-        }
-      ],
-      "retroalimentacion_formativa": {
-        "preguntas_sondeo": ["¿Cómo llegaste a esa conclusión?", "¿Qué pasaría si cambiaras...?", "¿Hay otra forma de verlo?"],
-        "protocolo_pares": "TAG (Tell-Ask-Give) o Dos estrellas y un deseo",
-        "gestion_error": "He notado que varios grupos están [error común]. Veamos juntos: [pregunta guía sin dar respuesta]"
-      },
-      "gestion_diversidad": {
-        "avanzados": "Qué hacer con estudiantes que dominan rápido: extensión, rol tutor, investigación adicional",
-        "apoyo_adicional": "Qué hacer con estudiantes que necesitan más apoyo: andamiaje extra, par tutor, material concreto"
-      },
-      "adaptaciones_desarrollo": ["Adaptación específica para NEE marcada en este momento"],
-      "actividades_docente": ["Resumen general de acciones del docente en el desarrollo"],
-      "actividades_estudiante": ["Resumen general de acciones de los estudiantes en el desarrollo"]
+      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (10-15 párrafos). Cada párrafo describe acciones concretas. Organiza el texto siguiendo las fases de la metodología activa elegida. Incluye consignas textuales completas entre comillas. Describe cómo circulás y qué preguntas de mediación haces. Indica cómo gestionas la diversidad (estudiantes que avanzan rápido, estudiantes que necesitan apoyo). Describe los productos parciales que van generando. Ejemplo: 'Organiza a los estudiantes en equipos de 4 integrantes. Asigna roles: un coordinador que gestiona los tiempos, un secretario que registra las ideas, un portavoz que presentará al grupo, y un verificador que asegura que todos comprendan.\\n\\nEntrega a cada equipo el material de trabajo: [descripción]. Asegúrate de que todos tengan los recursos necesarios antes de dar la consigna.\\n\\nPresenta la consigna de trabajo: \"Tienen 20 minutos para [tarea específica]. Deben [pasos claros]. Al finalizar, tendrán [producto esperado]\".\\n\\nMientras los equipos trabajan, circula por el aula observando los procedimientos. Haz preguntas de mediación: \"¿Cómo llegaron a esa conclusión?\", \"¿Qué pasaría si cambiaran...?\", \"¿Hay otra forma de verlo?\".\\n\\nSi detectas que varios equipos cometen el mismo error, pausa brevemente la actividad: \"He notado que varios grupos están [describir]. Veamos juntos: [pregunta guía sin dar la respuesta directa]\".\\n\\nPara los estudiantes que avanzan rápidamente, ofrece un reto adicional: [descripción]. Para quienes necesitan más apoyo, acércate y proporciona andamiaje adicional: [estrategia específica].\\n\\n[Continuar con más párrafos describiendo cada fase de la metodología...]'"
     },
     {
       "fase": "CIERRE",
-      "duracion": "ej: 15 min (calcular según 15-20% del total)",
-      "objetivo_fase": "Socializar productos, reflexionar sobre el proceso (metacognición), verificar logro del propósito y proyectar aprendizaje",
-      "subfases_cierre": [
-        {
-          "nombre": "Socialización de productos",
-          "duracion": "5-8 min",
-          "estrategia": "galeria|plenario_selectivo|intercambio_productos",
-          "descripcion": "Cómo se comparten y valoran los productos",
-          "consigna_textual": "Lo que dice el docente EXACTAMENTE"
-        },
-        {
-          "nombre": "Metacognición",
-          "duracion": "5-7 min",
-          "estrategia": "preguntas_orales|ticket_salida|rutina_3-2-1",
-          "preguntas_reflexion": [
-            "¿Qué aprendimos hoy? (verificación)",
-            "¿Cómo lo aprendimos? ¿Qué pasos seguimos? (proceso)",
-            "¿Qué fue lo más difícil y cómo lo resolvieron? (gestión error)",
-            "¿Dónde pueden usar esto fuera del colegio? (transferencia)"
-          ],
-          "consigna_textual": "Lo que dice el docente EXACTAMENTE"
-        },
-        {
-          "nombre": "Verificación del propósito",
-          "duracion": "3-5 min",
-          "retomar_criterios": "¿Logramos el criterio 1? ¿Logramos el criterio 2?",
-          "sintesis_ideas_clave": ["Idea clave 1", "Idea clave 2", "Idea clave 3"],
-          "conexion_proxima_sesion": "La próxima clase usaremos esto para..."
-        },
-        {
-          "nombre": "Cierre y despedida",
-          "duracion": "2-3 min",
-          "recojo_evidencias": "Qué se recoge y para qué (evaluación formativa, retroalimentación escrita)",
-          "tarea_extension": "Si aplica: tarea clara, específica, con fecha",
-          "mensaje_cierre": "Frase motivadora que conecta aprendizaje con vida real o propósito mayor"
-        }
-      ],
-      "adaptaciones_cierre": ["Adaptación específica para NEE marcada en este momento"],
-      "actividades_docente": ["Resumen de acciones del docente en el cierre"],
-      "actividades_estudiante": ["Resumen de acciones de los estudiantes en el cierre"]
+      "duracion": "ej: 15 min",
+      "organizacion": "En grupo clase",
+      "narrativa_docente": "TEXTO NARRATIVO EXTENSO EN SEGUNDA PERSONA (5-8 párrafos). Incluye socialización de productos, metacognición con preguntas específicas, verificación del propósito, síntesis de ideas clave, conexión con próxima sesión, recojo de evidencias y mensaje de cierre. Ejemplo: 'Organiza la socialización de productos. Pide a cada equipo que coloque su producto en un lugar visible del aula. Indica que rotarán para observar los trabajos de sus compañeros.\\n\\nGuía la observación con estas preguntas: \"¿Qué similitudes encuentran entre los productos?\", \"¿Qué les llama la atención?\", \"¿Qué estrategias diferentes usaron los equipos?\".\\n\\nFacilita la reflexión metacognitiva con las siguientes preguntas: \"¿Qué aprendimos hoy?\", \"¿Cómo lo aprendimos? ¿Qué pasos seguimos?\", \"¿Qué fue lo más difícil y cómo lo resolvieron?\", \"¿Dónde pueden usar esto fuera del colegio?\".\\n\\nRetoma los criterios de éxito planteados al inicio: \"Revisemos nuestros criterios. ¿Logramos [criterio 1]? ¿Logramos [criterio 2]?\". Permite que los estudiantes evalúen su propio desempeño.\\n\\nSintetiza las ideas clave de la sesión: [idea 1], [idea 2], [idea 3]. Puedes escribirlas en la pizarra o pedirles a los estudiantes que las enuncien.\\n\\nAnticipa la próxima sesión: \"La próxima clase usaremos lo que aprendimos hoy para [tema/actividad siguiente]\".\\n\\nRecoge los productos para revisarlos y proporcionar retroalimentación escrita. Despide a los estudiantes con un mensaje motivador: \"[Frase que conecta el aprendizaje con la vida real o con el propósito mayor]\".'"
     }
   ],
   "adaptaciones_sugeridas": {
-    "estrategias_diferenciadas": "Descripción general del enfoque de atención a la diversidad en esta sesión",
-    "por_tipo_nee": [
-      {
-        "tipo": "Nombre del NEE marcado (TDA, TDAH, TEA, Dislexia, Altas capacidades, Síndrome de Down, etc.)",
-        "principios_generales": "Principios de adaptación para este tipo de NEE",
-        "en_inicio": "Adaptación específica: cómo se adapta el enganche, instrucciones, comunicación del propósito",
-        "en_desarrollo": "Adaptación específica: cómo se adapta la organización, materiales, tiempos, roles, producto",
-        "en_cierre": "Adaptación específica: cómo se adapta la socialización, metacognición, ticket de salida"
-      }
-    ],
-    "apoyo_adicional": ["Estrategia 1 para estudiantes que necesitan más andamiaje", "Estrategia 2"],
-    "extension_avanzados": ["Reto adicional 1 para estudiantes avanzados", "Reto 2"],
-    "recursos_apoyo": ["Recurso específico 1", "Recurso 2"]
+    "estrategias_diferenciadas": "Descripción general del enfoque de atención a la diversidad",
+    "por_tipo_nee": [{
+      "tipo": "Nombre del NEE",
+      "en_inicio": "Cómo adaptar el inicio",
+      "en_desarrollo": "Cómo adaptar el desarrollo",
+      "en_cierre": "Cómo adaptar el cierre"
+    }],
+    "apoyo_adicional": ["Estrategia para estudiantes que necesitan más apoyo"],
+    "extension_avanzados": ["Reto para estudiantes avanzados"]
   }
 }
 
-# REGLAS PARA TÍTULO (VERIFICAR ANTES DE GENERAR)
-✅ Orientado a la acción o desafío: "¿Cómo calcular ganancias como un experto?"
-✅ Genera curiosidad: "El misterio de los números que desaparecen"
-✅ Conecta con la vida real: "Diseñamos la dieta perfecta para nuestra familia"
-❌ NO puramente temático: "Operaciones combinadas" (muy genérico)
-❌ NO solo el contenido: "Los ecosistemas" (falta el gancho)
-
-# VERIFICACIÓN DE COHERENCIA (CHECKLIST MENTAL)
-Antes de responder, verifica:
-- [ ] El título es motivador y orientado a la acción (no solo temático)
-- [ ] La situación significativa tiene CONTEXTO + RETO + PRODUCTO coherentes
-- [ ] El reto es RESPONDIDO por el producto
-- [ ] El producto EVIDENCIA los desempeños proporcionados
-- [ ] El instrumento EVALÚA los criterios de los desempeños
-- [ ] La metodología está INTEGRADA en las fases del desarrollo (no solo mencionada)
-- [ ] Cada subfase tiene CONSIGNA TEXTUAL y PRODUCTO PARCIAL
-- [ ] Las adaptaciones NEE están distribuidas EN inicio, desarrollo Y cierre
-- [ ] SOLO se usan materiales marcados como disponibles
+# VERIFICACIÓN FINAL (CHECKLIST)
+- [ ] situacion_significativa es UN PÁRRAFO ÚNICO (no objeto con contexto/reto/producto)
+- [ ] Cada momento tiene narrativa_docente como TEXTO EXTENSO en segunda persona
+- [ ] La narrativa usa verbos imperativos: "Haz", "Pide", "Muestra", "Indica", "Circula"
+- [ ] La narrativa NO tiene bullets ni listas con viñetas
+- [ ] Hay consignas textuales entre comillas dentro de la narrativa
 - [ ] El desarrollo representa 60-70% del tiempo total
-- [ ] Hay retroalimentación formativa explícita (preguntas de sondeo, gestión del error)
-- [ ] El cierre incluye metacognición Y verificación del propósito`;
+- [ ] SOLO se usan materiales marcados como disponibles`;
 
 interface CompetenciaConDesempenos {
   competencia: string;

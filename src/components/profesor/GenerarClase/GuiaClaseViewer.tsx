@@ -341,57 +341,84 @@ export function GuiaClaseViewer({
           })
         );
 
-        const hasDetailedStructure = 'objetivo_fase' in fase || 'actividades_docente' in fase;
-        
-        if (hasDetailedStructure) {
-          if ((fase as any).objetivo_fase) {
+        // Check for new narrative format first
+        if ('narrativa_docente' in fase && (fase as any).narrativa_docente) {
+          // Organization if available
+          if ('organizacion' in fase && (fase as any).organizacion) {
             children.push(
               new Paragraph({
-                children: [
-                  new TextRun({ text: "Objetivo: ", bold: true }),
-                  new TextRun((fase as any).objetivo_fase),
-                ],
+                children: [new TextRun({ text: (fase as any).organizacion, italics: true })],
                 spacing: { after: 100 },
               })
             );
           }
           
-          if ((fase as any).actividades_docente?.length > 0) {
-            children.push(
-              new Paragraph({
-                children: [new TextRun({ text: "Actividades del Docente:", bold: true })],
-                spacing: { before: 100 },
-              })
-            );
-            children.push(
-              new Paragraph({
-                text: `• ${((fase as any).actividades_docente as string[]).join('\n• ')}`,
-                spacing: { after: 100 },
-              })
-            );
-          }
+          // Narrative text (split by newlines for proper paragraphs)
+          const narrativeText = (fase as any).narrativa_docente as string;
+          const paragraphs = narrativeText.split(/\n\n|\n/).filter(p => p.trim());
           
-          if ((fase as any).actividades_estudiante?.length > 0) {
+          paragraphs.forEach(para => {
             children.push(
               new Paragraph({
-                children: [new TextRun({ text: "Actividades del Estudiante:", bold: true })],
-                spacing: { before: 100 },
-              })
-            );
-            children.push(
-              new Paragraph({
-                text: `• ${((fase as any).actividades_estudiante as string[]).join('\n• ')}`,
+                text: para.trim(),
                 spacing: { after: 100 },
               })
             );
-          }
+          });
         } else {
-          children.push(
-            new Paragraph({
-              text: fase.actividades,
-              spacing: { after: 100 },
-            })
-          );
+          // Legacy format
+          const hasDetailedStructure = 'objetivo_fase' in fase || 'actividades_docente' in fase;
+          
+          if (hasDetailedStructure) {
+            if ((fase as any).objetivo_fase) {
+              children.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: "Objetivo: ", bold: true }),
+                    new TextRun((fase as any).objetivo_fase),
+                  ],
+                  spacing: { after: 100 },
+                })
+              );
+            }
+            
+            if ((fase as any).actividades_docente?.length > 0) {
+              children.push(
+                new Paragraph({
+                  children: [new TextRun({ text: "Actividades del Docente:", bold: true })],
+                  spacing: { before: 100 },
+                })
+              );
+              children.push(
+                new Paragraph({
+                  text: `• ${((fase as any).actividades_docente as string[]).join('\n• ')}`,
+                  spacing: { after: 100 },
+                })
+              );
+            }
+            
+            if ((fase as any).actividades_estudiante?.length > 0) {
+              children.push(
+                new Paragraph({
+                  children: [new TextRun({ text: "Actividades del Estudiante:", bold: true })],
+                  spacing: { before: 100 },
+                })
+              );
+              children.push(
+                new Paragraph({
+                  text: `• ${((fase as any).actividades_estudiante as string[]).join('\n• ')}`,
+                  spacing: { after: 100 },
+                })
+              );
+            }
+          } else {
+            children.push(
+              new Paragraph({
+                text: fase.actividades,
+                spacing: { after: 100 },
+              })
+            );
+          }
         }
       });
 
@@ -747,7 +774,7 @@ export function GuiaClaseViewer({
           </div>
         </section>
 
-        {/* IV. SITUACIÓN SIGNIFICATIVA - NEW CognitIA Section */}
+        {/* IV. SITUACIÓN SIGNIFICATIVA - Now supports both string and object format */}
         {guia.situacion_significativa && (
           <section className="border border-border rounded-lg overflow-hidden border-l-4 border-l-amber-500">
             <header className="bg-slate-800 text-white px-4 py-2.5 flex items-center justify-between">
@@ -766,59 +793,75 @@ export function GuiaClaseViewer({
                 </Button>
               )}
             </header>
-            <div className="p-5 space-y-4 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10">
-              {/* Contexto */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  Contexto
-                </h4>
-                <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+            <div className="p-5 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10">
+              {typeof guia.situacion_significativa === 'string' ? (
+                /* NEW: Single narrative paragraph format */
+                <div className="text-sm leading-relaxed italic bg-white/80 dark:bg-slate-900/50 rounded-lg p-5 border border-amber-200 dark:border-amber-800">
                   <EditableText
-                    value={guia.situacion_significativa.contexto}
-                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'contexto'], v) : undefined}
+                    value={guia.situacion_significativa}
+                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa'], v) : undefined}
                     disabled={!canEdit}
                     sectionEditing={editingSections['situacion']}
                     multiline
                   />
                 </div>
-              </div>
+              ) : (
+                /* Legacy: Object with contexto/reto/producto */
+                <div className="space-y-4">
+                  {/* Contexto */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Contexto
+                    </h4>
+                    <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                      <EditableText
+                        value={guia.situacion_significativa.contexto}
+                        onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'contexto'], v) : undefined}
+                        disabled={!canEdit}
+                        sectionEditing={editingSections['situacion']}
+                        multiline
+                      />
+                    </div>
+                  </div>
 
-              {/* Reto/Desafío */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  Reto / Desafío
-                </h4>
-                <div className="bg-amber-100 dark:bg-amber-900/40 rounded-lg p-4 border-2 border-amber-300 dark:border-amber-700 text-center">
-                  <p className="font-semibold text-amber-900 dark:text-amber-100 text-lg">
-                    <EditableText
-                      value={guia.situacion_significativa.reto}
-                      onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'reto'], v) : undefined}
-                      disabled={!canEdit}
-                      sectionEditing={editingSections['situacion']}
-                      multiline
-                    />
-                  </p>
-                </div>
-              </div>
+                  {/* Reto/Desafío */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      Reto / Desafío
+                    </h4>
+                    <div className="bg-amber-100 dark:bg-amber-900/40 rounded-lg p-4 border-2 border-amber-300 dark:border-amber-700 text-center">
+                      <p className="font-semibold text-amber-900 dark:text-amber-100 text-lg">
+                        <EditableText
+                          value={guia.situacion_significativa.reto}
+                          onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'reto'], v) : undefined}
+                          disabled={!canEdit}
+                          sectionEditing={editingSections['situacion']}
+                          multiline
+                        />
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Producto */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-4 h-4" />
-                  Producto
-                </h4>
-                <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-                  <EditableText
-                    value={guia.situacion_significativa.producto}
-                    onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'producto'], v) : undefined}
-                    disabled={!canEdit}
-                    sectionEditing={editingSections['situacion']}
-                    multiline
-                  />
+                  {/* Producto */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      Producto
+                    </h4>
+                    <div className="text-sm leading-relaxed bg-white/80 dark:bg-slate-900/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                      <EditableText
+                        value={guia.situacion_significativa.producto}
+                        onChange={canEdit ? (v) => updateGuia(['situacion_significativa', 'producto'], v) : undefined}
+                        disabled={!canEdit}
+                        sectionEditing={editingSections['situacion']}
+                        multiline
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </section>
         )}
@@ -865,8 +908,6 @@ export function GuiaClaseViewer({
               };
               const config = phaseConfig[fase.fase] || phaseConfig.INICIO;
               
-              // Check if we have the new detailed structure
-              const hasDetailedStructure = 'objetivo_fase' in fase || 'actividades_docente' in fase;
               
               return (
                 <div 
@@ -887,7 +928,44 @@ export function GuiaClaseViewer({
                   
                   {/* Phase Content */}
                   <div className="p-4 space-y-4">
-                    {hasDetailedStructure ? (
+                    {/* NEW: Narrative format (narrativa_docente) - preferred */}
+                    {'narrativa_docente' in fase && (fase as any).narrativa_docente ? (
+                      <div className="space-y-3">
+                        {/* Organization label if available */}
+                        {'organizacion' in fase && (fase as any).organizacion && (
+                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5" />
+                            {(fase as any).organizacion}
+                          </div>
+                        )}
+                        
+                        {/* Methodology for DESARROLLO */}
+                        {'metodologia_activa' in fase && (fase as any).metodologia_activa && (
+                          <div className="bg-white/60 dark:bg-slate-900/40 rounded-lg p-3 border border-border/50 mb-3">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Metodología: {(fase as any).metodologia_activa.nombre}
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                              {(fase as any).metodologia_activa.justificacion}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Main narrative text */}
+                        <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2">
+                          <EditableText
+                            value={(fase as any).narrativa_docente}
+                            onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'narrativa_docente'], v) : undefined}
+                            disabled={!canEdit}
+                            sectionEditing={editingSections['momentos']}
+                            multiline
+                            className="whitespace-pre-wrap"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* Legacy format with detailed structure or simple actividades */
                       <>
                         {/* Objetivo de la fase */}
                         {'objetivo_fase' in fase && (fase as any).objetivo_fase && (
@@ -963,18 +1041,20 @@ export function GuiaClaseViewer({
                             </ul>
                           </div>
                         )}
+                        
+                        {/* Fallback: Simple actividades text */}
+                        {!('objetivo_fase' in fase) && !('actividades_docente' in fase) && (
+                          <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                            <EditableText
+                              value={fase.actividades}
+                              onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'actividades'], v) : undefined}
+                              disabled={!canEdit}
+                              sectionEditing={editingSections['momentos']}
+                              multiline
+                            />
+                          </div>
+                        )}
                       </>
-                    ) : (
-                      /* Fallback: Legacy simple structure */
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                        <EditableText
-                          value={fase.actividades}
-                          onChange={canEdit ? (v) => updateGuia(['momentos_sesion', i, 'actividades'], v) : undefined}
-                          disabled={!canEdit}
-                          sectionEditing={editingSections['momentos']}
-                          multiline
-                        />
-                      </div>
                     )}
                   </div>
                 </div>
