@@ -458,6 +458,7 @@ INSTRUCCIONES CRÍTICAS:
       console.error("Raw content preview:", content.substring(0, 500));
       
       console.log("Using fallback structure from input data...");
+      // FALLBACK con formato NUEVO (narrativa continua, NO legacy)
       guiaData = {
         datos_generales: {
           titulo_sesion: `Sesión: ${tema}`,
@@ -466,11 +467,8 @@ INSTRUCCIONES CRÍTICAS:
           area_academica: area || "[NO ESPECIFICADA]",
           duracion: `${duracion || 55} minutos`
         },
-        situacion_significativa: {
-          contexto: contexto || "Contexto educativo peruano",
-          reto: `¿Cómo podemos aplicar lo aprendido sobre ${tema}?`,
-          producto: "Producto que evidencia el aprendizaje"
-        },
+        // STRING único, no objeto
+        situacion_significativa: `${contexto || "En el contexto educativo peruano"}, los estudiantes se enfrentan al reto de comprender ${tema}. Esta situación requiere que apliquen sus conocimientos previos y desarrollen nuevas habilidades. Nos preguntamos: ¿Cómo podemos aplicar lo aprendido sobre ${tema}? ¿Qué estrategias nos ayudarán a resolver este desafío?`,
         propositos_aprendizaje: competenciasConDesempenos?.map(item => ({
           competencia: item.competencia,
           capacidades: item.capacidades,
@@ -489,24 +487,25 @@ INSTRUCCIONES CRÍTICAS:
         momentos_sesion: [
           { 
             fase: "INICIO", 
-            duracion: "15 min", 
-            objetivo_fase: "Conectar con el tema y activar saberes previos",
-            actividades_docente: ["Presentar el propósito de la sesión"], 
-            actividades_estudiante: ["Participar activamente en la motivación"] 
+            duracion: "15 min",
+            organizacion: "En grupo clase",
+            narrativa_docente: "**Bienvenida:** Recibe a los estudiantes y genera un ambiente de confianza.\n\n**Enganche:** Presenta una situación motivadora relacionada con el tema.\n\n**Saberes previos:** Pregunta qué saben sobre el tema y registra sus ideas en la pizarra.\n\n**Conflicto cognitivo:** Plantea una pregunta que desestabilice sus ideas previas.\n\n**Propósito:** Comunica: «Hoy vamos a aprender...». Presenta los criterios de éxito."
           },
           { 
-            fase: "DESARROLLO", 
-            duracion: `${Math.max((duracion || 55) - 25, 30)} min`, 
-            objetivo_fase: "Construir el aprendizaje mediante actividades colaborativas",
-            actividades_docente: ["Guiar el proceso de aprendizaje"], 
-            actividades_estudiante: ["Trabajar en equipo para resolver el reto"] 
+            fase: "DESARROLLO",
+            duracion: `${Math.max((duracion || 55) - 25, 30)} min`,
+            organizacion: "En equipos de 4",
+            metodologia_activa: {
+              nombre: "Aprendizaje Cooperativo",
+              justificacion: "Promueve la construcción colectiva del conocimiento"
+            },
+            narrativa_docente: "**Organización:** Forma equipos de 4 integrantes. Asigna roles: coordinador, secretario, portavoz y verificador.\n\n**Consigna:** Indica: «Tienen 20 minutos para...».\n\n**Mediación:** Circula por el aula haciendo preguntas de sondeo.\n\n**Consolidación:** Guía la elaboración del producto final."
           },
           { 
-            fase: "CIERRE", 
-            duracion: "10 min", 
-            objetivo_fase: "Reflexionar sobre lo aprendido y transferir",
-            actividades_docente: ["Facilitar la metacognición"], 
-            actividades_estudiante: ["Compartir aprendizajes y reflexiones"] 
+            fase: "CIERRE",
+            duracion: "10 min",
+            organizacion: "En grupo clase",
+            narrativa_docente: "**Socialización:** Organiza la presentación de productos.\n\n**Metacognición:** Pregunta: «¿Qué aprendimos hoy?», «¿Cómo lo aprendimos?».\n\n**Verificación:** Retoma los criterios de éxito del inicio.\n\n**Cierre:** Sintetiza las ideas clave y anticipa la próxima sesión."
           }
         ],
         adaptaciones_sugeridas: {
@@ -558,30 +557,21 @@ INSTRUCCIONES CRÍTICAS:
       actitud_estudiante: e.actitud_estudiante
     }));
 
-    // Normalize momentos_sesion to handle both old and new structures
+    // Normalize momentos_sesion - PRIORIZAR formato narrativo nuevo
     const normalizedMomentos = (guiaData.momentos_sesion || []).map((m: any) => {
       const normalized: any = {
         fase: m.fase,
         duracion: m.duracion,
-        actividades: m.actividades || "",
-        objetivo_fase: m.objetivo_fase,
-        actividades_docente: m.actividades_docente || [],
-        actividades_estudiante: m.actividades_estudiante || []
+        organizacion: m.organizacion || "En grupo clase",
+        narrativa_docente: m.narrativa_docente || "",
       };
 
-      // Copy new CognitIA fields if present
-      if (m.estrategia_motivacion) normalized.estrategia_motivacion = m.estrategia_motivacion;
-      if (m.conflicto_cognitivo) normalized.conflicto_cognitivo = m.conflicto_cognitivo;
-      if (m.conexion_saberes_previos) normalized.conexion_saberes_previos = m.conexion_saberes_previos;
-      if (m.proposito_comunicado) normalized.proposito_comunicado = m.proposito_comunicado;
-      if (m.consigna_textual) normalized.consigna_textual = m.consigna_textual;
+      // Copiar metodologia_activa si existe (solo para DESARROLLO)
       if (m.metodologia_activa) normalized.metodologia_activa = m.metodologia_activa;
-      if (m.fases_desarrollo) normalized.fases_desarrollo = m.fases_desarrollo;
-      if (m.retroalimentacion_formativa) normalized.retroalimentacion_formativa = m.retroalimentacion_formativa;
-      if (m.socializacion) normalized.socializacion = m.socializacion;
-      if (m.metacognicion) normalized.metacognicion = m.metacognicion;
-      if (m.verificacion_proposito) normalized.verificacion_proposito = m.verificacion_proposito;
 
+      // NO copiar campos legacy (actividades_docente, actividades_estudiante, objetivo_fase)
+      // Estos campos se ELIMINAN del output para forzar el formato nuevo
+      
       return normalized;
     });
 
@@ -605,11 +595,12 @@ INSTRUCCIONES CRÍTICAS:
         area_academica: guiaData.datos_generales?.area_academica || area || "[NO ESPECIFICADA]",
         duracion: guiaData.datos_generales?.duracion || `${duracion || 55} minutos`
       },
-      situacion_significativa: guiaData.situacion_significativa || {
-        contexto: contexto || "Contexto educativo peruano",
-        reto: `¿Cómo podemos aplicar lo aprendido sobre ${tema}?`,
-        producto: "Producto que evidencia el aprendizaje"
-      },
+      // Situación significativa SIEMPRE como string (párrafo narrativo único)
+      situacion_significativa: typeof guiaData.situacion_significativa === 'string' 
+        ? guiaData.situacion_significativa 
+        : (guiaData.situacion_significativa?.contexto 
+            ? `${guiaData.situacion_significativa.contexto} ${guiaData.situacion_significativa.reto || ''} ${guiaData.situacion_significativa.producto || ''}`.trim()
+            : `En el contexto educativo peruano, los estudiantes se enfrentan al reto de comprender ${tema}. Esta situación requiere que apliquen sus conocimientos previos y desarrollen nuevas habilidades. Nos preguntamos: ¿Cómo podemos aplicar lo aprendido sobre ${tema}?`),
       propositos_aprendizaje: normalizedPropositos.length > 0 ? normalizedPropositos : defaultPropositos,
       enfoques_transversales: normalizedEnfoques.length > 0 ? normalizedEnfoques : (
         Array.isArray(enfoquesTransversales) && enfoquesTransversales.length > 0
