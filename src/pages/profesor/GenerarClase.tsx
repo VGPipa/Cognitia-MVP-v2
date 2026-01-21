@@ -1363,9 +1363,9 @@ export default function GenerarClase() {
                     </div>
                   )}
 
-                  {/* Área Académica */}
+                  {/* Área Curricular */}
                   <div className="space-y-2">
-                    <Label>Área Académica *</Label>
+                    <Label>Área Curricular *</Label>
                     <Select 
                       value={formData.areaAcademica} 
                       onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidadesPorCompetencia: {}, desempenosPorCompetencia: {}})}
