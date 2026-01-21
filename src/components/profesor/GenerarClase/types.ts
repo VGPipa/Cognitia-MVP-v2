@@ -1,8 +1,14 @@
 // Types for GenerarClase form and wizard
 
+export type NivelEducativo = 'Inicial' | 'Primaria' | 'Secundaria' | '';
+
 export interface FormData {
   fecha: string;
   duracion: number;
+  // Nuevos campos para nivel/grado/sección
+  nivel: NivelEducativo;
+  grado: string;
+  seccion: string;
   areaAcademica: string;
   // Propósitos de aprendizaje
   competencias: string[];

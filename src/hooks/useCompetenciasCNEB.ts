@@ -7,12 +7,13 @@ export interface CompetenciaCNEB {
   nombre: string;
   codigo: string | null;
   orden: number;
+  nivel: string | null;
   created_at: string;
 }
 
-export function useCompetenciasCNEB(areaId?: string) {
+export function useCompetenciasCNEB(areaId?: string, nivel?: string) {
   const { data: competencias = [], isLoading, error } = useQuery({
-    queryKey: ['competencias-cneb', areaId],
+    queryKey: ['competencias-cneb', areaId, nivel],
     queryFn: async () => {
       let query = supabase
         .from('competencias_cneb')
@@ -21,6 +22,11 @@ export function useCompetenciasCNEB(areaId?: string) {
 
       if (areaId) {
         query = query.eq('id_area', areaId);
+      }
+
+      // Filter by nivel: include competencias with matching nivel OR null (applies to all)
+      if (nivel) {
+        query = query.or(`nivel.is.null,nivel.eq.${nivel}`);
       }
 
       const { data, error } = await query;

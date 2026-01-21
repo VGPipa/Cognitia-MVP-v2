@@ -60,8 +60,11 @@ import {
   calculateSectionProgress,
   formatDate,
   getEstadoLabel,
+  getGradosForNivel,
+  SECCIONES_DISPONIBLES,
   type FormData,
-  type ViewMode
+  type ViewMode,
+  type NivelEducativo
 } from '@/components/profesor/GenerarClase';
 import { WizardProgress } from '@/components/profesor/GenerarClase/WizardProgress';
 import { CompetenciaSection } from '@/components/profesor/GenerarClase/CompetenciaSection';
@@ -118,9 +121,9 @@ export default function GenerarClase() {
   // State for tracking which competencia is generating desempeños
   const [generatingForCompetencia, setGeneratingForCompetencia] = useState<string | null>(null);
 
-  // CNEB Data hooks
-  const { areas } = useAreasCurriculares();
-  const { competencias: competenciasCNEB } = useCompetenciasCNEB(formData.areaAcademica);
+  // CNEB Data hooks - now filtered by nivel
+  const { areas } = useAreasCurriculares(formData.nivel || undefined);
+  const { competencias: competenciasCNEB } = useCompetenciasCNEB(formData.areaAcademica, formData.nivel || undefined);
   const { capacidades: capacidadesCNEB } = useCapacidadesCNEB(formData.competencias);
   const { enfoques } = useEnfoquesTransversales();
   const { tiposAdaptacion } = useTiposAdaptacion();
@@ -260,6 +263,14 @@ export default function GenerarClase() {
           const asignacion = asignaciones.find(a => a.id_materia === cursoId);
           if (asignacion?.grupo) {
             setGrupoData(asignacion.grupo);
+            // Parse nivel/grado from grupo
+            const parsed = parseGradoFromGrupo(asignacion.grupo);
+            setFormData(prev => ({
+              ...prev,
+              nivel: (parsed.nivel as NivelEducativo) || '',
+              grado: parsed.gradoNum || '',
+              seccion: asignacion.grupo?.seccion || ''
+            }));
           }
 
           if (claseId) {
@@ -275,12 +286,27 @@ export default function GenerarClase() {
             
             if (!claseError && clase) {
               setClaseData(clase);
-              setFormData(prev => ({
-                ...prev,
-                fecha: clase.fecha_programada || '',
-                duracion: clase.duracion_minutos || 90,
-                contexto: clase.contexto || ''
-              }));
+              
+              // Parse nivel/grado from grupo if available
+              if (clase.grupo) {
+                const parsed = parseGradoFromGrupo(clase.grupo);
+                setFormData(prev => ({
+                  ...prev,
+                  fecha: clase.fecha_programada || '',
+                  duracion: clase.duracion_minutos || 90,
+                  contexto: clase.contexto || '',
+                  nivel: (parsed.nivel as NivelEducativo) || '',
+                  grado: parsed.gradoNum || '',
+                  seccion: clase.grupo?.seccion || ''
+                }));
+              } else {
+                setFormData(prev => ({
+                  ...prev,
+                  fecha: clase.fecha_programada || '',
+                  duracion: clase.duracion_minutos || 90,
+                  contexto: clase.contexto || ''
+                }));
+              }
 
               if (clase.id_guia_version_actual) {
                 try {
@@ -343,14 +369,25 @@ export default function GenerarClase() {
           
           if (clase.grupo) {
             setGrupoData(clase.grupo);
+            // Parse nivel/grado from grupo
+            const parsed = parseGradoFromGrupo(clase.grupo);
+            setFormData(prev => ({
+              ...prev,
+              fecha: clase.fecha_programada || '',
+              duracion: clase.duracion_minutos || 90,
+              contexto: clase.contexto || '',
+              nivel: (parsed.nivel as NivelEducativo) || '',
+              grado: parsed.gradoNum || '',
+              seccion: clase.grupo?.seccion || ''
+            }));
+          } else {
+            setFormData(prev => ({
+              ...prev,
+              fecha: clase.fecha_programada || '',
+              duracion: clase.duracion_minutos || 90,
+              contexto: clase.contexto || ''
+            }));
           }
-          
-          setFormData(prev => ({
-            ...prev,
-            fecha: clase.fecha_programada || '',
-            duracion: clase.duracion_minutos || 90,
-            contexto: clase.contexto || ''
-          }));
 
           if (clase.id_guia_version_actual) {
             try {
@@ -420,14 +457,25 @@ export default function GenerarClase() {
     
     if (clase.grupo) {
       setGrupoData(clase.grupo);
+      // Parse nivel/grado/seccion from grupo
+      const parsed = parseGradoFromGrupo(clase.grupo);
+      setFormData(prev => ({
+        ...prev,
+        fecha: clase.fecha_programada || '',
+        duracion: clase.duracion_minutos || 90,
+        contexto: clase.contexto || '',
+        nivel: (parsed.nivel as NivelEducativo) || '',
+        grado: parsed.gradoNum || '',
+        seccion: clase.grupo?.seccion || ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        fecha: clase.fecha_programada || '',
+        duracion: clase.duracion_minutos || 90,
+        contexto: clase.contexto || ''
+      }));
     }
-    
-    setFormData(prev => ({
-      ...prev,
-      fecha: clase.fecha_programada || '',
-      duracion: clase.duracion_minutos || 90,
-      contexto: clase.contexto || ''
-    }));
     
     if (clase.id_guia_version_actual) {
       try {
@@ -459,6 +507,9 @@ export default function GenerarClase() {
     setFormData({
       fecha: new Date().toISOString().split('T')[0],
       duracion: 90,
+      nivel: '',
+      grado: '',
+      seccion: '',
       areaAcademica: '',
       competencias: [],
       capacidadesPorCompetencia: {},
@@ -511,8 +562,38 @@ export default function GenerarClase() {
   const ensureClase = async () => {
     if (claseData) return claseData;
 
-    if (!grupoData || !profesorId) {
-      throw new Error('Faltan datos necesarios para crear la clase (grupo o profesor)');
+    // For extraordinaria classes, we need nivel/grado to find or create a group
+    if (!profesorId) {
+      throw new Error('Faltan datos necesarios para crear la clase (profesor)');
+    }
+
+    if (!formData.nivel || !formData.grado) {
+      throw new Error('Faltan datos necesarios para crear la clase (nivel y grado)');
+    }
+
+    // Try to find a matching group or use the first available one
+    let groupToUse = grupoData;
+    
+    if (!groupToUse && isExtraordinaria) {
+      // Try to find a matching group based on nivel/grado/seccion
+      const gradoPattern = formData.nivel === 'Inicial' 
+        ? `${formData.grado} años`
+        : `${formData.grado}° ${formData.nivel}`;
+      
+      groupToUse = grupos.find(g => {
+        if (!g) return false;
+        const matchesGrado = g.grado?.includes(gradoPattern) || g.grado === gradoPattern;
+        const matchesSeccion = !formData.seccion || g.seccion === formData.seccion;
+        return matchesGrado && matchesSeccion;
+      }) || grupos.find(g => g?.grado?.includes(gradoPattern)) || grupos[0];
+      
+      if (groupToUse) {
+        setGrupoData(groupToUse);
+      }
+    }
+
+    if (!groupToUse) {
+      throw new Error('No se encontró un grupo disponible. Contacta al administrador.');
     }
 
     // Para clases extraordinarias, id_tema puede ser null
@@ -520,7 +601,7 @@ export default function GenerarClase() {
 
     const nuevaClase = await createClase.mutateAsync({
       id_tema: temaIdToUse,
-      id_grupo: grupoData.id,
+      id_grupo: groupToUse.id,
       fecha_programada: formData.fecha || new Date().toISOString().split('T')[0],
       duracion_minutos: formData.duracion,
       contexto: formData.contexto,
@@ -717,10 +798,11 @@ export default function GenerarClase() {
       return;
     }
 
-    if (!grupoData) {
+    // Validate nivel/grado for extraordinaria classes
+    if (isExtraordinaria && (!formData.nivel || !formData.grado)) {
       toast({
         title: 'Error',
-        description: 'Selecciona un grupo antes de continuar',
+        description: 'Selecciona nivel y grado antes de continuar',
         variant: 'destructive'
       });
       return;
@@ -741,9 +823,11 @@ export default function GenerarClase() {
         formData.contexto,
         formData.materiales,
         {
-          grado: gradoInfo?.gradoCompleto || grupoData?.grado,
-          nivel: gradoInfo?.nivel,
-          seccion: grupoData?.seccion,
+          grado: isExtraordinaria 
+            ? (formData.nivel === 'Inicial' ? `${formData.grado} años` : `${formData.grado}° ${formData.nivel}`)
+            : (gradoInfo?.gradoCompleto || grupoData?.grado),
+          nivel: formData.nivel || gradoInfo?.nivel,
+          seccion: formData.seccion || grupoData?.seccion,
           numeroEstudiantes: grupoData?.cantidad_alumnos,
           duracion: formData.duracion,
           area: cursoData?.nombre || areas.find(a => a.id === formData.areaAcademica)?.nombre,
@@ -1163,32 +1247,98 @@ export default function GenerarClase() {
                       </div>
                     </div>
 
-                    {/* Grupo - siempre visible */}
+                    {/* Nivel Educativo */}
                     <div className="space-y-2">
-                      <Label>Grupo *</Label>
-                      {isExtraordinaria ? (
-                        <Select 
-                          value={grupoData?.id || ''} 
-                          onValueChange={(value) => {
-                            const grupo = grupos.find(g => g?.id === value);
-                            setGrupoData(grupo);
-                          }}
-                          disabled={isClaseCompletada}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un grupo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {grupos.filter(Boolean).map(g => (
-                              <SelectItem key={g!.id} value={g!.id}>
-                                {g!.nombre || `${g!.grado} ${g!.seccion || ''}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input value={grupoData?.nombre || `${grupoData?.grado} ${grupoData?.seccion || ''}`} disabled />
-                      )}
+                      <Label>Nivel *</Label>
+                      <Select 
+                        value={formData.nivel} 
+                        onValueChange={(value: NivelEducativo) => {
+                          // Reset dependent fields when nivel changes
+                          setFormData({
+                            ...formData, 
+                            nivel: value,
+                            grado: '',
+                            seccion: '',
+                            areaAcademica: '',
+                            competencias: [],
+                            capacidadesPorCompetencia: {},
+                            desempenosPorCompetencia: {}
+                          });
+                          // Also try to find a matching group
+                          setGrupoData(null);
+                        }}
+                        disabled={isClaseCompletada || !isExtraordinaria}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona nivel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Inicial">Inicial</SelectItem>
+                          <SelectItem value="Primaria">Primaria</SelectItem>
+                          <SelectItem value="Secundaria">Secundaria</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Grado */}
+                    <div className="space-y-2">
+                      <Label>Grado *</Label>
+                      <Select 
+                        value={formData.grado} 
+                        onValueChange={(value) => {
+                          setFormData({...formData, grado: value});
+                          // Try to find matching group
+                          const matchingGroup = grupos.find(g => {
+                            if (!g) return false;
+                            const gradoPattern = formData.nivel === 'Inicial' 
+                              ? `${value} años`
+                              : `${value}° ${formData.nivel}`;
+                            return g.grado?.includes(gradoPattern) || g.grado === `${value}° ${formData.nivel}`;
+                          });
+                          if (matchingGroup) setGrupoData(matchingGroup);
+                        }}
+                        disabled={isClaseCompletada || !formData.nivel || !isExtraordinaria}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={formData.nivel ? "Selecciona grado" : "Primero selecciona nivel"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getGradosForNivel(formData.nivel).map(g => (
+                            <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Sección */}
+                    <div className="space-y-2">
+                      <Label>Sección</Label>
+                      <Select 
+                        value={formData.seccion} 
+                        onValueChange={(value) => {
+                          setFormData({...formData, seccion: value});
+                          // Try to find exact matching group
+                          const matchingGroup = grupos.find(g => {
+                            if (!g) return false;
+                            const gradoPattern = formData.nivel === 'Inicial' 
+                              ? `${formData.grado} años`
+                              : `${formData.grado}° ${formData.nivel}`;
+                            return (g.grado?.includes(gradoPattern) || g.grado === `${formData.grado}° ${formData.nivel}`) 
+                              && g.seccion === value;
+                          });
+                          if (matchingGroup) setGrupoData(matchingGroup);
+                        }}
+                        disabled={isClaseCompletada || !formData.grado || !isExtraordinaria}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Opcional" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SECCIONES_DISPONIBLES.map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {/* Fecha */}
@@ -1203,11 +1353,11 @@ export default function GenerarClase() {
                     </div>
                   </div>
 
-                  {/* Info derivada del grupo */}
-                  {grupoData && gradoInfo && (
+                  {/* Para clases NO extraordinarias, mostrar info del grupo actual */}
+                  {!isExtraordinaria && grupoData && (
                     <div className="flex gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                      <span><strong>Nivel:</strong> {gradoInfo.nivel}</span>
-                      <span><strong>Grado:</strong> {gradoInfo.gradoNum}°</span>
+                      <span><strong>Nivel:</strong> {gradoInfo?.nivel || 'N/A'}</span>
+                      <span><strong>Grado:</strong> {gradoInfo?.gradoNum || 'N/A'}°</span>
                       <span><strong>Sección:</strong> {grupoData.seccion || 'N/A'}</span>
                     </div>
                   )}
@@ -1218,10 +1368,10 @@ export default function GenerarClase() {
                     <Select 
                       value={formData.areaAcademica} 
                       onValueChange={(value) => setFormData({...formData, areaAcademica: value, competencias: [], capacidadesPorCompetencia: {}, desempenosPorCompetencia: {}})}
-                      disabled={isClaseCompletada}
+                      disabled={isClaseCompletada || (!formData.nivel && isExtraordinaria)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un área" />
+                        <SelectValue placeholder={isExtraordinaria && !formData.nivel ? "Primero selecciona nivel" : "Selecciona un área"} />
                       </SelectTrigger>
                       <SelectContent>
                         {areas.map(area => (

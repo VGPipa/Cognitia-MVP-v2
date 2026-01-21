@@ -164,18 +164,21 @@ export type Database = {
           created_at: string
           id: string
           id_institucion: string | null
+          nivel: string | null
           nombre: string
         }
         Insert: {
           created_at?: string
           id?: string
           id_institucion?: string | null
+          nivel?: string | null
           nombre: string
         }
         Update: {
           created_at?: string
           id?: string
           id_institucion?: string | null
+          nivel?: string | null
           nombre?: string
         }
         Relationships: [
@@ -409,6 +412,7 @@ export type Database = {
           created_at: string
           id: string
           id_area: string
+          nivel: string | null
           nombre: string
           orden: number
         }
@@ -417,6 +421,7 @@ export type Database = {
           created_at?: string
           id?: string
           id_area: string
+          nivel?: string | null
           nombre: string
           orden?: number
         }
@@ -425,6 +430,7 @@ export type Database = {
           created_at?: string
           id?: string
           id_area?: string
+          nivel?: string | null
           nombre?: string
           orden?: number
         }

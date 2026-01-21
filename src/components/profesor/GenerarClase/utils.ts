@@ -1,4 +1,4 @@
-import type { GradoInfo, FormData, FormSectionProgress, GrupoData } from './types';
+import type { GradoInfo, FormData, FormSectionProgress, GrupoData, NivelEducativo } from './types';
 
 // Helper to parse grade info from group data
 export const parseGradoFromGrupo = (grupo: { grado: string; seccion?: string | null }): GradoInfo => {
@@ -12,6 +12,40 @@ export const parseGradoFromGrupo = (grupo: { grado: string; seccion?: string | n
   }
   return { gradoNum: '', nivel: '', gradoCompleto: grupo.grado };
 };
+
+// Get available grades for a given level
+export const getGradosForNivel = (nivel: NivelEducativo): { value: string; label: string }[] => {
+  switch (nivel) {
+    case 'Inicial':
+      return [
+        { value: '3', label: '3 años' },
+        { value: '4', label: '4 años' },
+        { value: '5', label: '5 años' }
+      ];
+    case 'Primaria':
+      return [
+        { value: '1', label: '1° Grado' },
+        { value: '2', label: '2° Grado' },
+        { value: '3', label: '3° Grado' },
+        { value: '4', label: '4° Grado' },
+        { value: '5', label: '5° Grado' },
+        { value: '6', label: '6° Grado' }
+      ];
+    case 'Secundaria':
+      return [
+        { value: '1', label: '1° Grado' },
+        { value: '2', label: '2° Grado' },
+        { value: '3', label: '3° Grado' },
+        { value: '4', label: '4° Grado' },
+        { value: '5', label: '5° Grado' }
+      ];
+    default:
+      return [];
+  }
+};
+
+// Standard sections
+export const SECCIONES_DISPONIBLES = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // Format date for display
 export const formatDate = (dateStr: string | null): string => {
@@ -39,10 +73,10 @@ export const calculateSectionProgress = (
   temaData: any,
   grupoData: GrupoData | null
 ): FormSectionProgress => {
-  // Datos section
+  // Datos section - now checks nivel/grado instead of grupo
   const datosFields = [
     isExtraordinaria ? formData.temaPersonalizado.trim() : temaData?.id,
-    grupoData?.id,
+    formData.nivel && formData.grado, // Nivel y Grado son requeridos
     formData.fecha,
     formData.areaAcademica
   ];
@@ -101,7 +135,7 @@ export const getMissingFields = (
   formData: FormData,
   isExtraordinaria: boolean,
   temaData: any,
-  grupoData: GrupoData | null
+  _grupoData: GrupoData | null // Keep for backward compatibility but use nivel/grado instead
 ): string[] => {
   const missing: string[] = [];
   
@@ -112,7 +146,11 @@ export const getMissingFields = (
     if (!temaData?.id) missing.push('Tema');
   }
   
-  if (!grupoData) missing.push('Grupo');
+  // Nivel y Grado son requeridos
+  if (!formData.nivel) missing.push('Nivel');
+  if (!formData.grado) missing.push('Grado');
+  // Sección es opcional
+  
   if (!formData.fecha) missing.push('Fecha programada');
   if (!formData.areaAcademica) missing.push('Área Académica');
   if (formData.competencias.length === 0) missing.push('Al menos una Competencia');
@@ -137,6 +175,9 @@ export const getMissingFields = (
 export const getInitialFormData = (): FormData => ({
   fecha: '',
   duracion: 90, // 2 horas pedagógicas (default)
+  nivel: '',
+  grado: '',
+  seccion: '',
   areaAcademica: '',
   competencias: [],
   capacidadesPorCompetencia: {},
