@@ -580,12 +580,28 @@ export default function GenerarClase() {
         ? `${formData.grado} años`
         : `${formData.grado}° ${formData.nivel}`;
       
+      // First try in assigned groups
       groupToUse = grupos.find(g => {
         if (!g) return false;
         const matchesGrado = g.grado?.includes(gradoPattern) || g.grado === gradoPattern;
         const matchesSeccion = !formData.seccion || g.seccion === formData.seccion;
         return matchesGrado && matchesSeccion;
       }) || grupos.find(g => g?.grado?.includes(gradoPattern)) || grupos[0];
+      
+      // If not found in assigned groups, search globally in the database
+      if (!groupToUse) {
+        const { data: allGroups } = await supabase
+          .from('grupos')
+          .select('*')
+          .ilike('grado', `%${gradoPattern}%`);
+        
+        if (allGroups && allGroups.length > 0) {
+          const match = allGroups.find(g => 
+            (!formData.seccion || g.seccion === formData.seccion)
+          );
+          groupToUse = match || allGroups[0];
+        }
+      }
       
       if (groupToUse) {
         setGrupoData(groupToUse);
