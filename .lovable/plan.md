@@ -1,29 +1,35 @@
 
 
-## Corrección de Proporción del Logo Nitia
+## Ajuste del Tamaño del Logo Nitia
 
-### Problema Identificado
-El logo actualmente usa solo altura fija (`h-20`, `h-28`, `h-36`) con `w-auto`, lo que hace que la imagen se vea cuadrada o con poca visibilidad del texto "Nitia". Se necesita una proporción más horizontal para que el nombre sea legible.
+### Problema Actual
+El logo actual tiene tamaño `sm: 'w-48 h-12'` (192×48px), pero la clase `w-auto` en el `<img>` está sobrescribiendo el ancho definido. Además, comparando con la imagen de referencia, el logo necesita ser significativamente más grande para que el texto "Nitia" sea fácilmente legible.
 
-### Solución Propuesta
-Modificar el componente `Logo.tsx` para usar dimensiones que favorezcan una proporción horizontal, manteniendo una altura moderada pero permitiendo un ancho amplio.
+### Análisis de la Imagen de Referencia
+En la imagen proporcionada, el logo:
+- Ocupa casi todo el ancho disponible del sidebar (~220px de un sidebar de 256px)
+- Tiene una altura considerable (~60-70px)
+- Se lee claramente "Nitia" con el ícono decorativo
 
 ### Cambios Técnicos
 
 **Archivo: `src/components/Logo.tsx`**
 
-Ajustar las clases de tamaño para usar anchos explícitos que creen una proporción horizontal:
+1. **Aumentar los tamaños de todas las variantes:**
 
-| Tamaño | Antes | Después |
-|--------|-------|---------|
-| `sm` (Sidebar) | `h-20` | `w-48 h-12` (proporción ~4:1) |
-| `md` | `h-28` | `w-64 h-16` (proporción ~4:1) |
-| `lg` (Login) | `h-36` | `w-80 h-20` (proporción ~4:1) |
+| Tamaño | Actual | Nuevo |
+|--------|--------|-------|
+| `sm` (Sidebar) | `w-48 h-12` (192×48px) | `w-56 h-16` (224×64px) |
+| `md` | `w-64 h-16` | `w-72 h-20` |
+| `lg` (Login) | `w-80 h-20` | `w-96 h-24` |
 
-**Nota:** Una proporción 1:15 literal sería extremadamente alargada. La proporción ~4:1 (ancho 4 veces mayor que alto) es más práctica y asegura que el logo sea legible mientras cabe en los contenedores existentes (el sidebar tiene `w-64` = 256px de ancho).
+2. **Corregir la clase del `<img>`:**
+   - Cambiar `className={cn(sizes[size], 'w-auto object-contain')}` 
+   - A `className={cn(sizes[size], 'object-contain')}` 
+   - Esto elimina `w-auto` que estaba sobrescribiendo el ancho definido
 
 ### Resultado Esperado
-- El logo se mostrará en formato horizontal con el texto "Nitia" claramente visible
-- Se mantendrá `object-contain` para preservar la imagen sin distorsión
-- El sidebar (256px de ancho) podrá contener cómodamente el logo `sm` de 192px de ancho
+- El logo en el sidebar será más grande y prominente, similar a la imagen de referencia
+- El texto "Nitia" será fácilmente legible
+- El logo cabrá cómodamente en el sidebar de 256px de ancho
 
