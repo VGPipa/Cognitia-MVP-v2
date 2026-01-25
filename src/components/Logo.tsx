@@ -8,9 +8,9 @@ interface LogoProps {
 
 export function Logo({ size = 'md', className }: LogoProps) {
   const sizes = {
-    sm: 'w-48 h-12',
-    md: 'w-64 h-16',
-    lg: 'w-80 h-20'
+    sm: 'w-56 h-16',
+    md: 'w-72 h-20',
+    lg: 'w-96 h-24'
   };
 
   return (
@@ -18,7 +18,7 @@ export function Logo({ size = 'md', className }: LogoProps) {
       <img 
         src={nitiaLogo} 
         alt="Nitia" 
-        className={cn(sizes[size], 'w-auto object-contain')}
+        className={cn(sizes[size], 'object-contain')}
       />
     </div>
   );
