@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { GraduationCap, Loader2, Shield, UserCheck, BookOpen, Users } from 'lucide-react';
+import { Loader2, Shield, UserCheck, BookOpen, Users } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 type UserRole = 'admin' | 'profesor' | 'alumno' | 'apoderado';
 
@@ -116,11 +117,8 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full gradient-bg">
-              <GraduationCap className="w-8 h-8 text-primary-foreground" />
-            </div>
+            <Logo size="lg" />
           </div>
-          <CardTitle className="text-2xl font-bold">Sistema Educativo</CardTitle>
           <CardDescription>
             Ingresa a tu cuenta o crea una nueva para comenzar
           </CardDescription>
