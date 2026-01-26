@@ -1,35 +1,52 @@
 
 
-## Ajuste del Tamaño del Logo Nitia
+## Habilitar Creación de Sesiones para agomez
 
-### Problema Actual
-El logo actual tiene tamaño `sm: 'w-48 h-12'` (192×48px), pero la clase `w-auto` en el `<img>` está sobrescribiendo el ancho definido. Además, comparando con la imagen de referencia, el logo necesita ser significativamente más grande para que el texto "Nitia" sea fácilmente legible.
+### Estado Actual
+- **Usuario**: Angelo Gomez (agomez@gmail.com)
+- **Profesor ID**: `2df76ad0-cf51-4ea9-8882-c545d0d8810e`
+- **Rol**: Profesor (activo)
+- **Asignaciones actuales**: Ninguna
 
-### Análisis de la Imagen de Referencia
-En la imagen proporcionada, el logo:
-- Ocupa casi todo el ancho disponible del sidebar (~220px de un sidebar de 256px)
-- Tiene una altura considerable (~60-70px)
-- Se lee claramente "Nitia" con el ícono decorativo
+### Solución
+Crear asignaciones en la tabla `asignaciones_profesor` para vincular a agomez con grupos y cursos específicos. Esto le permitira:
 
-### Cambios Técnicos
+1. Ver cursos en la sección "Planificación"
+2. Crear sesiones vinculadas a temas del plan curricular
+3. Acceder a todos los flujos de generación de guías de clase
 
-**Archivo: `src/components/Logo.tsx`**
+### Cambios en Base de Datos
 
-1. **Aumentar los tamaños de todas las variantes:**
+Insertar asignaciones para agomez usando los grupos y cursos existentes:
 
-| Tamaño | Actual | Nuevo |
-|--------|--------|-------|
-| `sm` (Sidebar) | `w-48 h-12` (192×48px) | `w-56 h-16` (224×64px) |
-| `md` | `w-64 h-16` | `w-72 h-20` |
-| `lg` (Login) | `w-80 h-20` | `w-96 h-24` |
+| Grupo | Grado | Curso |
+|-------|-------|-------|
+| 1° Primaria A | 1° Primaria | Comunicación |
+| 1° Primaria A | 1° Primaria | Matemática |
+| 2° Primaria A | 2° Primaria | Comunicación |
+| 2° Primaria A | 2° Primaria | Matemática |
 
-2. **Corregir la clase del `<img>`:**
-   - Cambiar `className={cn(sizes[size], 'w-auto object-contain')}` 
-   - A `className={cn(sizes[size], 'object-contain')}` 
-   - Esto elimina `w-auto` que estaba sobrescribiendo el ancho definido
+**SQL a ejecutar:**
+```text
+INSERT INTO asignaciones_profesor (id_profesor, id_grupo, id_materia, anio_escolar)
+VALUES 
+  -- 1° Primaria A - Comunicación
+  ('2df76ad0-cf51-4ea9-8882-c545d0d8810e', 'b17a3af8-ef34-401b-83dd-fe0011c6e010', '33333333-3333-3333-3333-333333333301', '2025'),
+  -- 1° Primaria A - Matemática
+  ('2df76ad0-cf51-4ea9-8882-c545d0d8810e', 'b17a3af8-ef34-401b-83dd-fe0011c6e010', '33333333-3333-3333-3333-333333333304', '2025'),
+  -- 2° Primaria A - Comunicación
+  ('2df76ad0-cf51-4ea9-8882-c545d0d8810e', 'b092525d-46ad-472d-9951-0e87c6c7b60a', '33333333-3333-3333-3333-333333333302', '2025'),
+  -- 2° Primaria A - Matemática
+  ('2df76ad0-cf51-4ea9-8882-c545d0d8810e', 'b092525d-46ad-472d-9951-0e87c6c7b60a', '33333333-3333-3333-3333-333333333305', '2025');
+```
 
 ### Resultado Esperado
-- El logo en el sidebar será más grande y prominente, similar a la imagen de referencia
-- El texto "Nitia" será fácilmente legible
-- El logo cabrá cómodamente en el sidebar de 256px de ancho
+- agomez podrá acceder a "Planificación" y ver los cursos asignados
+- Podrá iniciar temas y programar sesiones desde el flujo normal
+- Tambien podrá seguir creando Clases Extraordinarias si lo necesita
+
+### Notas
+- No se requieren cambios de codigo, solo insercion de datos
+- Las asignaciones usan el año escolar 2025 (actual)
+- Los grupos y cursos seleccionados ya existen en la base de datos
 
