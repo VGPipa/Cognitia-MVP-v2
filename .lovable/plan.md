@@ -326,4 +326,3 @@ La aplicación estará disponible en `http://localhost:5173`
 - [ ] Datos maestros importados
 - [ ] Usuarios de prueba creados
 - [ ] Aplicación ejecutándose en localhost
-
