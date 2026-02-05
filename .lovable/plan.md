@@ -1,8 +1,8 @@
 
 
-# Guía Completa: Configurar Supabase Externo para Colaborador
+# Guía Completa: Invitar Colaborador a Lovable
 
-Esta guía detalla paso a paso cómo tu colaborador puede configurar su propio entorno de Supabase usando el código del repositorio GitHub.
+Esta guía detalla cómo invitar a tu colaborador directamente a Lovable para que trabaje en el mismo proyecto con acceso completo a la base de datos y el código.
 
 ---
 
@@ -10,235 +10,104 @@ Esta guía detalla paso a paso cómo tu colaborador puede configurar su propio e
 
 | Elemento | Valor |
 |----------|-------|
-| **Repositorio GitHub** | `https://github.com/[tu-usuario]/smart-learning-studio` |
+| **Proyecto Lovable** | Smart Learning Studio |
+| **URL del Proyecto** | https://lovable.dev/projects/86f5fc8d-1fb3-46d9-a5bf-00c5399ea0f7 |
 | **URL Publicada** | https://smart-learning-studio.lovable.app |
-| **Total de Tablas** | 28 tablas |
-| **Total de Migraciones** | 7 archivos SQL |
-| **Edge Functions** | 5 funciones |
+| **Repositorio GitHub** | Conectado (sincronización automática) |
 
 ---
 
-## Paso 1: Clonar el Repositorio
+## Opción A: Invitar Solo al Proyecto (Recomendado)
 
-```bash
-git clone https://github.com/[tu-usuario]/smart-learning-studio.git
-cd smart-learning-studio
-npm install
-```
+El colaborador solo verá este proyecto específico.
 
----
+### Paso 1: Abrir el Diálogo de Compartir
 
-## Paso 2: Crear Proyecto en Supabase
+1. Abrir el proyecto en Lovable
+2. Click en el botón **Share** (esquina superior derecha, icono "+")
 
-1. Ir a https://supabase.com/dashboard
-2. Click en **"New Project"**
-3. Configurar:
-   - **Name**: `smart-learning-studio-dev`
-   - **Database Password**: (guardar en lugar seguro)
-   - **Region**: Elegir la más cercana (ej: South America - São Paulo)
-4. Esperar ~2 minutos a que se cree el proyecto
-5. Anotar:
-   - **Project ID**: Visible en la URL del dashboard (`https://supabase.com/dashboard/project/[PROJECT_ID]`)
-   - **API URL**: En Settings → API → Project URL
-   - **Anon Key**: En Settings → API → Project API keys → `anon public`
+### Paso 2: Invitar al Colaborador
 
----
+1. Ingresar el email del colaborador
+2. Seleccionar el nivel de acceso:
 
-## Paso 3: Instalar y Configurar Supabase CLI
+| Rol | Permisos |
+|-----|----------|
+| **Viewer** | Solo puede ver el código y la preview |
+| **Editor** | Puede editar el código y usar el chat con IA |
+| **Admin** | Puede gestionar configuraciones, colaboradores y publicar |
 
-```bash
-# Instalar CLI (macOS/Linux)
-brew install supabase/tap/supabase
+3. Click en **Invite**
+4. El colaborador recibirá un email con la invitación
 
-# O con npm
-npm install -g supabase
+### Paso 3: El Colaborador Acepta la Invitación
 
-# Iniciar sesión
-supabase login
-
-# Vincular proyecto (reemplazar [PROJECT_ID] con el ID real)
-supabase link --project-ref [PROJECT_ID]
-# Te pedirá el Database Password del Paso 2
-```
+1. El colaborador recibe el email de invitación
+2. Click en el enlace del email
+3. Si no tiene cuenta en Lovable, deberá crearla
+4. Automáticamente tendrá acceso al proyecto
 
 ---
 
-## Paso 4: Aplicar las Migraciones
+## Opción B: Invitar al Workspace Completo
 
-El proyecto tiene **7 archivos de migración** en `/supabase/migrations/`:
+El colaborador verá TODOS los proyectos del workspace.
 
-| Archivo | Contenido |
-|---------|-----------|
-| `20260105052817_remix_migration_from_pg_dump.sql` | Schema completo inicial (ENUMs, tablas, funciones) |
-| `20260105053808_*.sql` | Ajustes adicionales |
-| `20260105054452_*.sql` | Políticas RLS |
-| `20260105060338_*.sql` | Triggers y funciones |
-| `20260105062311_*.sql` | Configuración auth |
-| `20260105065618_*.sql` | Datos maestros |
-| `20260121152434_*.sql` | Últimas actualizaciones |
+### Paso 1: Acceder a Configuración del Workspace
 
-**Ejecutar migraciones:**
+1. Ir a **Settings** (icono de engranaje)
+2. Navegar a **People**
 
-```bash
-supabase db push
-```
+### Paso 2: Agregar Miembro
 
-Esto creará:
-- 4 ENUMs: `app_role`, `estado_clase`, `estado_quiz`, `estado_respuesta`, `plan_estado`, `relacion_apoderado`, `tipo_pregunta`
-- 28 tablas con sus relaciones
-- Políticas RLS para seguridad
-- Funciones: `has_role()`, `get_user_institucion()`, `handle_new_user()`
-- Trigger para creación automática de perfiles
+1. Click en **Add member** o **Invite**
+2. Ingresar el email del colaborador
+3. Seleccionar el rol:
+
+| Rol | Permisos |
+|-----|----------|
+| **Viewer** | Ver todos los proyectos |
+| **Editor** | Crear y editar todos los proyectos |
+| **Admin** | Gestionar workspace, facturación y miembros |
+| **Owner** | Control total del workspace |
+
+4. Enviar invitación
 
 ---
 
-## Paso 5: Configurar Variables de Entorno
+## Lo Que el Colaborador Podrá Hacer
 
-Crear archivo `.env.local` en la raíz del proyecto:
+### Acceso al Código
+- Ver y editar todo el código del proyecto
+- Usar el chat con IA para hacer cambios
+- Ver la preview en tiempo real
+- Sincronización automática con GitHub
 
-```env
-# Reemplazar con los valores de TU proyecto Supabase
-VITE_SUPABASE_URL=https://[PROJECT_ID].supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=[TU_ANON_KEY]
-VITE_SUPABASE_PROJECT_ID=[PROJECT_ID]
-```
+### Acceso a la Base de Datos (Cloud View)
+- **Database > Tables**: Ver, crear, editar y eliminar registros
+- **Database > Tables > Export**: Exportar datos en CSV/JSON
+- **Users**: Ver usuarios registrados en el sistema de autenticación
+- **Edge Functions**: Ver y gestionar las funciones serverless
+- **Secrets**: Ver (no los valores) y gestionar secrets
 
-**Ejemplo con valores ficticios:**
-```env
-VITE_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_SUPABASE_PROJECT_ID=abcdefghijklmnop
-```
-
----
-
-## Paso 6: Desplegar Edge Functions
-
-El proyecto tiene **5 Edge Functions** que usan IA para generar contenido educativo:
-
-```bash
-# Desplegar todas las funciones
-supabase functions deploy generate-guia-clase
-supabase functions deploy generate-quiz-pre
-supabase functions deploy generate-quiz-post
-supabase functions deploy generate-recomendaciones
-supabase functions deploy generate-desempenos
-```
+### Acceso a las Edge Functions
+Las 5 Edge Functions estarán disponibles:
+- `generate-guia-clase`
+- `generate-quiz-pre`
+- `generate-quiz-post`
+- `generate-recomendaciones`
+- `generate-desempenos`
 
 ---
 
-## Paso 7: Configurar Secrets para Edge Functions
+## Credenciales de Prueba Existentes
 
-Las Edge Functions requieren una API key para el servicio de IA.
-
-**Opción A: Usar API Key de OpenAI (recomendado para desarrollo independiente)**
-
-```bash
-# Configurar OpenAI API Key
-supabase secrets set OPENAI_API_KEY=sk-...tu-api-key...
-```
-
-Luego modificar las Edge Functions para usar OpenAI en lugar del gateway de Lovable. Por ejemplo, en `generate-guia-clase/index.ts`:
-
-```typescript
-// Cambiar de:
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', ...);
-
-// A:
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const response = await fetch('https://api.openai.com/v1/chat/completions', {
-  headers: {
-    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-    ...
-  },
-  body: JSON.stringify({
-    model: 'gpt-4o', // o gpt-3.5-turbo para menor costo
-    ...
-  }),
-});
-```
-
-**Opción B: Mantener Lovable API (si tu colaborador tiene acceso)**
-
-```bash
-supabase secrets set LOVABLE_API_KEY=[API_KEY_PROPORCIONADA]
-```
-
----
-
-## Paso 8: Importar Datos Maestros
-
-Los datos que necesitas exportar e importar son:
-
-| Tabla | Registros | Descripción |
-|-------|-----------|-------------|
-| `instituciones` | 1 | Institución Demo |
-| `areas_curriculares` | 16 | Matemática, Comunicación, Ciencias, etc. |
-| `competencias_cneb` | 43 | Competencias del currículo nacional |
-| `capacidades_cneb` | 153 | Capacidades por competencia |
-| `enfoques_transversales` | 7 | Enfoques educativos |
-| `tipos_adaptacion` | 12 | Adaptaciones para NEE |
-| `grupos` | 14 | 1°A, 1°B, 2°A, etc. |
-| `anios_escolares` | 1 | Año 2025 |
-
-**Exportar desde Lovable Cloud:**
-1. Ir a Cloud View → Database → Tables
-2. Para cada tabla, click en Export (CSV o JSON)
-3. Guardar los archivos
-
-**Importar en Supabase Dashboard:**
-1. Ir a Table Editor en el Dashboard de Supabase
-2. Seleccionar cada tabla
-3. Click en "Import data from CSV"
-4. Subir el archivo correspondiente
-
-**O usar SQL directo** (ejemplo para institución):
-
-```sql
-INSERT INTO instituciones (id, nombre) VALUES 
-('00000000-0000-0000-0000-000000000001', 'Institución Demo');
-```
-
----
-
-## Paso 9: Crear Usuarios de Prueba
-
-En el Dashboard de Supabase → Authentication → Users → Add user:
+Compartir estas credenciales con el colaborador para probar la aplicación:
 
 ### Usuario Docente
 ```
 Email: docente@gmail.com
 Password: admin123
-```
-
-Después de crear, ejecutar en SQL Editor:
-
-```sql
--- Obtener el user_id del usuario recién creado
--- (verificar en Authentication → Users)
-
--- Asumiendo que el user_id es 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-INSERT INTO profiles (user_id, email, nombre, apellido, id_institucion)
-VALUES (
-  'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-  'docente@gmail.com',
-  'Profesor',
-  'Demo',
-  '00000000-0000-0000-0000-000000000001'
-);
-
-INSERT INTO user_roles (user_id, role, id_institucion)
-VALUES (
-  'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-  'profesor',
-  '00000000-0000-0000-0000-000000000001'
-);
-
-INSERT INTO profesores (user_id)
-VALUES ('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
-
--- Repetir similar para el alumno
 ```
 
 ### Usuario Alumno
@@ -249,80 +118,97 @@ Password: admin123
 
 ---
 
-## Paso 10: Configurar Auth (Opcional)
-
-En Dashboard → Authentication → Providers:
-
-1. **Email**: Habilitado por defecto
-2. **Confirm email**: Desactivar para desarrollo local
-   - Settings → Auth → "Enable email confirmations" → OFF
-
----
-
-## Paso 11: Ejecutar la Aplicación
-
-```bash
-npm run dev
-```
-
-La aplicación estará disponible en `http://localhost:5173`
-
----
-
-## Resumen de Archivos a Compartir con tu Colaborador
-
-1. **Acceso al repositorio GitHub** (ya lo tiene)
-2. **Archivo de datos exportados** (CSV/JSON de las tablas maestras)
-3. **Esta guía** con los pasos detallados
-
----
-
-## Estructura de Tablas Principales
+## Flujo de Trabajo Recomendado
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                    TABLAS DE REFERENCIA                      │
+│                    FLUJO DE COLABORACIÓN                     │
 ├─────────────────────────────────────────────────────────────┤
-│ instituciones (1)                                            │
-│ areas_curriculares (16) → competencias_cneb (43)            │
-│                         → capacidades_cneb (153)            │
-│ enfoques_transversales (7)                                  │
-│ tipos_adaptacion (12)                                       │
-│ grupos (14)                                                 │
-│ anios_escolares (1)                                         │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    TABLAS DE USUARIOS                        │
-├─────────────────────────────────────────────────────────────┤
-│ profiles → user_roles                                        │
-│         → profesores (11)                                   │
-│         → alumnos (3)                                       │
-│         → apoderados                                        │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    TABLAS DE CONTENIDO                       │
-├─────────────────────────────────────────────────────────────┤
-│ planes_anuales (5) → cursos_plan (10) → temas_plan (12)     │
-│ asignaciones_profesor                                        │
-│ clases → guias_tema → guias_clase_versiones                 │
-│       → quizzes → preguntas                                 │
-│                 → nota_alumno → respuestas_detalle          │
-│                 → recomendaciones                           │
+│                                                             │
+│  TÚ (Owner)              COLABORADOR (Editor/Admin)        │
+│      │                          │                          │
+│      │   1. Invitación email    │                          │
+│      │ ───────────────────────► │                          │
+│      │                          │                          │
+│      │   2. Acepta invitación   │                          │
+│      │ ◄─────────────────────── │                          │
+│      │                          │                          │
+│      │                          │                          │
+│      ▼                          ▼                          │
+│  ┌───────────────────────────────────────────────────┐     │
+│  │              LOVABLE PROJECT                       │     │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌───────────┐  │     │
+│  │  │   Código    │  │  Database   │  │  Preview  │  │     │
+│  │  │   (React)   │  │  (Cloud)    │  │  (Live)   │  │     │
+│  │  └─────────────┘  └─────────────┘  └───────────┘  │     │
+│  └───────────────────────────────────────────────────┘     │
+│                          │                                  │
+│                          ▼                                  │
+│  ┌───────────────────────────────────────────────────┐     │
+│  │                    GITHUB                          │     │
+│  │         (Sincronización automática)               │     │
+│  └───────────────────────────────────────────────────┘     │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Checklist Final
+## Consideraciones Importantes
 
-- [ ] Proyecto Supabase creado
-- [ ] CLI vinculado al proyecto
-- [ ] Migraciones aplicadas (`supabase db push`)
-- [ ] `.env.local` configurado
-- [ ] Edge Functions desplegadas
-- [ ] Secrets configurados (OPENAI_API_KEY o LOVABLE_API_KEY)
-- [ ] Datos maestros importados
-- [ ] Usuarios de prueba creados
-- [ ] Aplicación ejecutándose en localhost
+### Uso de Créditos
+- Los créditos usados por el colaborador se **descuentan del workspace del owner** (tú)
+- El colaborador NO usa sus propios créditos
+- Cada mensaje en el chat con IA consume 1 crédito
+
+### Base de Datos Compartida
+- Ambos trabajan sobre la **misma base de datos**
+- Los cambios son visibles inmediatamente para ambos
+- No hay conflictos de datos - es un entorno único
+
+### Código y GitHub
+- Los cambios de código se sincronizan automáticamente con GitHub
+- Ambos pueden hacer commits desde Lovable
+- Si editan desde GitHub, los cambios aparecen en Lovable
+
+### Edge Functions
+- Los cambios en Edge Functions se despliegan automáticamente
+- El secret `LOVABLE_API_KEY` ya está configurado
+- No necesitan configuración adicional
+
+---
+
+## Comparativa: Lovable vs Supabase Externo
+
+| Aspecto | Invitar a Lovable | Supabase Externo |
+|---------|-------------------|------------------|
+| **Setup** | 2 minutos | 30-60 minutos |
+| **Base de datos** | Compartida | Independiente |
+| **Edge Functions** | Automáticas | Configuración manual |
+| **Secrets** | Ya configurados | Configurar manualmente |
+| **Créditos IA** | Del workspace | Su propia API key |
+| **Colaboración** | Tiempo real | Via Git |
+| **Ideal para** | Trabajo conjunto | Desarrollo independiente |
+
+---
+
+## Checklist para el Colaborador
+
+Una vez invitado, el colaborador debe:
+
+- [ ] Aceptar la invitación por email
+- [ ] Crear cuenta en Lovable (si no tiene)
+- [ ] Acceder al proyecto Smart Learning Studio
+- [ ] Probar login con credenciales de prueba
+- [ ] Familiarizarse con Cloud View (Database, Edge Functions)
+- [ ] Hacer un cambio de prueba para verificar permisos
+
+---
+
+## Próximos Pasos
+
+1. **Invitar**: Usa el botón Share y envía la invitación
+2. **Compartir credenciales**: Envía las credenciales de prueba
+3. **Compartir esta guía**: Para que el colaborador entienda el setup
+4. **Definir responsabilidades**: Qué partes del proyecto trabajará cada uno
+
