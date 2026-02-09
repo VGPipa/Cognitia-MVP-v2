@@ -298,7 +298,6 @@ export type Database = {
           nivel: string | null
           numero_sesion: number | null
           observaciones: string | null
-          tema_personalizado: string | null
           updated_at: string
         }
         Insert: {
@@ -326,7 +325,6 @@ export type Database = {
           nivel?: string | null
           numero_sesion?: number | null
           observaciones?: string | null
-          tema_personalizado?: string | null
           updated_at?: string
         }
         Update: {
@@ -354,7 +352,6 @@ export type Database = {
           nivel?: string | null
           numero_sesion?: number | null
           observaciones?: string | null
-          tema_personalizado?: string | null
           updated_at?: string
         }
         Relationships: [
