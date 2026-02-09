@@ -1,36 +1,27 @@
 
 
-# Limpieza de Base de Datos: Eliminar tablas y enums de Quiz
+## Apply Migration: `20260209210000_generation_flow_hardening`
 
-## Estado Actual
+This migration file already exists in the repository. It needs to be applied to the database. No application code will be modified.
 
-- **5 tablas de quiz** con 0 registros: `quizzes`, `preguntas`, `nota_alumno`, `respuestas_detalle`, `recomendaciones`
-- **4 enums relacionados**: `estado_quiz`, `estado_respuesta`, `tipo_pregunta`, `tipo_quiz`
-- **15 politicas RLS** en esas 5 tablas
-- **2 edge functions** en el codigo (ya desplegadas): `generate-guia-clase` y `generate-desempenos`
-- No hay edge functions de quiz en el codigo (solo las 2 de arriba)
+### What the migration does
 
-## Lo que hara la migracion
+1. **Adds `tema_personalizado` column** to the `clases` table (text, nullable) to support extraordinary/custom class topics.
 
-Una sola migracion SQL que:
+2. **Creates performance indexes** on:
+   - `clases (id_profesor, id_tema, estado, fecha_programada)`
+   - `asignaciones_profesor (id_profesor, id_grupo, id_materia)`
+   - `guias_tema (id_profesor, id_tema)`
 
-1. **Elimina 15 politicas RLS** de las 5 tablas de quiz
-2. **Elimina 5 tablas** (en orden correcto por dependencias):
-   - `respuestas_detalle` (depende de `nota_alumno` y `preguntas`)
-   - `nota_alumno` (depende de `quizzes`)
-   - `recomendaciones` (depende de `quizzes`)
-   - `preguntas` (depende de `quizzes`)
-   - `quizzes` (depende de `clases`)
-3. **Elimina 4 enums**: `estado_quiz`, `estado_respuesta`, `tipo_pregunta`, `tipo_quiz`
+3. **De-duplicates `guias_tema`** rows by `(id_profesor, id_tema)`, keeping the latest, then enforces a unique constraint.
 
-## Impacto en el codigo
+4. **Replaces permissive `USING(true)` SELECT policies** on `clases`, `guias_tema`, and `guias_clase_versiones` with scoped role-based policies:
+   - Admins can read all rows.
+   - Profesores can only read their own rows (via `profesores.user_id`).
 
-- No hay queries del frontend a estas tablas, por lo que no se requieren cambios en el codigo React
-- Los tipos en `src/integrations/supabase/types.ts` se actualizaran automaticamente despues de la migracion
-- Las 2 edge functions desplegadas (`generate-guia-clase`, `generate-desempenos`) no se ven afectadas
+5. **Strengthens the teacher write policy** on `clases` to verify the professor has a valid assignment (`asignaciones_profesor`) for the group/topic combination.
 
-## Seguridad
+### Execution
 
-- Todas las tablas tienen 0 registros, no se pierde ningun dato
-- No hay datos en el entorno Live que preservar
+The migration tool will be used to apply the exact SQL from the file. No frontend or TypeScript files will be touched.
 
