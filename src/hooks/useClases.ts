@@ -48,8 +48,7 @@ const VALID_TRANSITIONS: Record<EstadoClase, EstadoClase[]> = {
   guia_aprobada: ['clase_programada', 'editando_guia'],
   clase_programada: ['en_clase', 'clase_programada'],
   en_clase: ['completada', 'en_clase'],
-  completada: ['completada'],
-  analizando_resultados: ['completada']
+  completada: ['completada']
 };
 
 /**

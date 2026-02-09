@@ -332,7 +332,7 @@ export async function generateGuiaMaestra(
     'Resolución de problemas de aplicación contextualizada.',
     'Portafolio de evidencias con trabajos seleccionados.',
     'Rúbricas de evaluación para habilidades de comunicación y razonamiento.',
-    'Quizzes interactivos cortos (evaluación diagnóstica y sumativa).'
+    'Evaluaciones formativas mediante actividades interactivas.'
   ];
 
   // Generate cross-curricular activities

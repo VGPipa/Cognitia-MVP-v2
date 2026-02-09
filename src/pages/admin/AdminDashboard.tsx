@@ -21,7 +21,7 @@ const MOCK_STATS = {
   profesores: 24,
   alumnos: 580,
   cursos: 12,
-  quizzes: 156
+  clases: 48
 };
 
 const MOCK_ACTIVIDAD = [
@@ -72,8 +72,8 @@ export default function AdminDashboard() {
           icon={BookOpen}
         />
         <StatCard
-          title="Quizzes creados"
-          value={MOCK_STATS.quizzes}
+          title="Clases creadas"
+          value={MOCK_STATS.clases}
           icon={ClipboardList}
           variant="gradient"
         />

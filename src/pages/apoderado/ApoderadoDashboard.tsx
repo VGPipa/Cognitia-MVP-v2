@@ -1,18 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { StatCard } from '@/components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Users,
-  TrendingUp,
   BookOpen,
   MessageSquare,
   ChevronRight,
-  CheckCircle2,
-  AlertCircle,
   Star
 } from 'lucide-react';
 

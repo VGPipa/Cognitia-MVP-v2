@@ -7,7 +7,6 @@ import {
   User,
   TrendingUp,
   BookOpen,
-  ClipboardList,
   ChevronRight,
   Star
 } from 'lucide-react';
@@ -20,7 +19,6 @@ const MOCK_HIJOS = [
     grado: '3ro Primaria',
     seccion: 'A',
     promedioGeneral: 82,
-    quizzesCompletados: 24,
     materiasDetalle: [
       { nombre: 'Matemáticas', promedio: 85, estado: 'bueno' },
       { nombre: 'Lenguaje', promedio: 78, estado: 'regular' },
@@ -35,7 +33,6 @@ const MOCK_HIJOS = [
     grado: '1ro Secundaria',
     seccion: 'B',
     promedioGeneral: 88,
-    quizzesCompletados: 28,
     materiasDetalle: [
       { nombre: 'Matemáticas', promedio: 90, estado: 'bueno' },
       { nombre: 'Lenguaje', promedio: 85, estado: 'bueno' },
@@ -90,11 +87,6 @@ export default function Hijos() {
                       <TrendingUp className="w-4 h-4 text-primary" />
                       <span className="font-medium">{hijo.promedioGeneral}%</span>
                       <span className="text-muted-foreground">promedio</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <ClipboardList className="w-4 h-4 text-primary" />
-                      <span className="font-medium">{hijo.quizzesCompletados}</span>
-                      <span className="text-muted-foreground">quizzes</span>
                     </div>
                   </div>
                 </div>

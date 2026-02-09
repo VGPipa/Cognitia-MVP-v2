@@ -27,7 +27,6 @@ export interface AsignacionConMetricas {
   materia: { id: string; nombre: string };
   grupo: { id: string; nombre: string; grado: string; seccion: string | null; cantidad_alumnos: number };
   promedio: number;
-  totalQuizzes: number;
   asistencia: number;
 }
 
@@ -132,7 +131,6 @@ export function useAsignacionesProfesor() {
             cantidad_alumnos: grupo.cantidad_alumnos || 0 
           },
           promedio: 0,
-          totalQuizzes: 0,
           asistencia: 0,
         };
       }).filter(Boolean) as AsignacionConMetricas[];

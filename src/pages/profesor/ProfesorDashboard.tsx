@@ -24,9 +24,7 @@ import {
   Clock,
   ChevronRight,
   AlertCircle,
-  FileText,
-  CheckCircle2,
-  Lightbulb
+  FileText
 } from 'lucide-react';
 
 
@@ -461,7 +459,7 @@ export default function ProfesorDashboard() {
               <Button 
                 variant="outline" 
                 className="w-full justify-start gap-2"
-                onClick={() => navigate('/profesor/metricas')}
+                onClick={() => navigate('/profesor/mis-salones')}
               >
                 <TrendingUp className="w-4 h-4" />
                 Métricas globales
