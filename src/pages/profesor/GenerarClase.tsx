@@ -189,8 +189,8 @@ export default function GenerarClase() {
     try {
       await updateGuiaVersion.mutateAsync({
         id: claseData.id_guia_version_actual,
-        contenido: guia,
-        estructura: guia.momentos_sesion,
+        contenido: JSON.parse(JSON.stringify(guia)),
+        estructura: JSON.parse(JSON.stringify(guia.momentos_sesion)),
         objetivos: guia.propositos_aprendizaje.map((p) => p.competencia).join('\n'),
         silent: true,
       });
@@ -406,7 +406,7 @@ export default function GenerarClase() {
                   nivel: (parsed.nivel as NivelEducativo) || '',
                   grado: parsed.gradoNum || '',
                   seccion: clase.grupo?.seccion || '',
-                  temaPersonalizado: clase.tema_personalizado || ''
+                  temaPersonalizado: (clase as any).tema_personalizado || ''
                 }));
               } else {
                 setFormData(prev => ({
@@ -414,7 +414,7 @@ export default function GenerarClase() {
                   fecha: clase.fecha_programada || '',
                   duracion: clase.duracion_minutos || 90,
                   contexto: clase.contexto || '',
-                  temaPersonalizado: clase.tema_personalizado || ''
+                  temaPersonalizado: (clase as any).tema_personalizado || ''
                 }));
               }
 
@@ -496,7 +496,7 @@ export default function GenerarClase() {
               nivel: (parsed.nivel as NivelEducativo) || '',
               grado: parsed.gradoNum || '',
               seccion: clase.grupo?.seccion || '',
-              temaPersonalizado: clase.tema_personalizado || ''
+              temaPersonalizado: (clase as any).tema_personalizado || ''
             }));
           } else {
             setFormData(prev => ({
@@ -504,7 +504,7 @@ export default function GenerarClase() {
               fecha: clase.fecha_programada || '',
               duracion: clase.duracion_minutos || 90,
               contexto: clase.contexto || '',
-              temaPersonalizado: clase.tema_personalizado || ''
+              temaPersonalizado: (clase as any).tema_personalizado || ''
             }));
           }
 
@@ -593,7 +593,7 @@ export default function GenerarClase() {
         nivel: (parsed.nivel as NivelEducativo) || '',
         grado: parsed.gradoNum || '',
         seccion: clase.grupo?.seccion || '',
-        temaPersonalizado: clase.tema_personalizado || ''
+        temaPersonalizado: (clase as any).tema_personalizado || ''
       }));
     } else {
       setFormData(prev => ({
@@ -601,7 +601,7 @@ export default function GenerarClase() {
         fecha: clase.fecha_programada || '',
         duracion: clase.duracion_minutos || 90,
         contexto: clase.contexto || '',
-        temaPersonalizado: clase.tema_personalizado || ''
+        temaPersonalizado: (clase as any).tema_personalizado || ''
       }));
     }
     
@@ -946,7 +946,6 @@ export default function GenerarClase() {
         id: clase.id,
         estado: 'generando_clase',
         contexto: formData.contexto,
-        tema_personalizado: isExtraordinaria ? formData.temaPersonalizado.trim() || null : null,
         silent: true,
       });
       setClaseData((prev: any) => ({ ...prev, ...claseGenerando }));
@@ -1150,7 +1149,7 @@ export default function GenerarClase() {
                       <div>
                         <p className="text-sm text-primary font-medium">Clase en proceso</p>
                         <p className="font-semibold">
-                          {claseEnProceso.tema?.nombre || claseEnProceso.tema_personalizado || 'Sin tema'} • {claseEnProceso.grupo?.grado}° {claseEnProceso.grupo?.seccion || ''}
+                          {claseEnProceso.tema?.nombre || (claseEnProceso as any).tema_personalizado || 'Sin tema'} • {claseEnProceso.grupo?.grado}° {claseEnProceso.grupo?.seccion || ''}
                         </p>
                         <Badge variant="secondary" className="mt-1">
                           {getEstadoLabel(claseEnProceso.estado)}
