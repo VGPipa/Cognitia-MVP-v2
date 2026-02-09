@@ -1039,7 +1039,6 @@ export type Database = {
         | "clase_programada"
         | "en_clase"
         | "completada"
-        | "analizando_resultados"
       plan_estado: "activo" | "borrador" | "pendiente"
       relacion_apoderado: "padre" | "madre" | "tutor"
     }
@@ -1178,7 +1177,6 @@ export const Constants = {
         "clase_programada",
         "en_clase",
         "completada",
-        "analizando_resultados",
       ],
       plan_estado: ["activo", "borrador", "pendiente"],
       relacion_apoderado: ["padre", "madre", "tutor"],
