@@ -32,12 +32,13 @@ export interface Clase extends ClaseRow {
 
 export interface CreateClaseData {
   id_grupo: string;
-  id_tema: string;
+  id_tema: string | null;
   fecha_programada?: string;
   duracion_minutos?: number;
   contexto?: string;
   metodologia?: string;
   numero_sesion?: number;
+  tema_personalizado?: string | null;
 }
 
 // Valid transitions for estado_clase
@@ -147,7 +148,7 @@ export function useClases(filters?: {
   });
 
   const updateClase = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<ClaseRow> & { id: string }) => {
+    mutationFn: async ({ id, silent, ...updates }: Partial<ClaseRow> & { id: string; silent?: boolean }) => {
       // Validate estado transition if estado is being updated
       if (updates.estado) {
         // Get current clase estado
@@ -183,12 +184,16 @@ export function useClases(filters?: {
       if (error) throw error;
       return data as Clase;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clases'] });
-      toast.success('Clase actualizada');
+      if (!variables?.silent) {
+        toast.success('Clase actualizada');
+      }
     },
-    onError: (error: any) => {
-      toast.error('Error al actualizar: ' + error.message);
+    onError: (error: any, variables) => {
+      if (!variables?.silent) {
+        toast.error('Error al actualizar: ' + error.message);
+      }
     },
   });
 
@@ -259,4 +264,3 @@ export function useClases(filters?: {
     getClasesProgramadas,
   };
 }
-

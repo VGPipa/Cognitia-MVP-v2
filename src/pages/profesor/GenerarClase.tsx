@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useProfesor } from '@/hooks/useProfesor';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
+import { useAniosEscolares } from '@/hooks/useAniosEscolares';
 import { useClases, type Clase } from '@/hooks/useClases';
 import { useGuiasClase } from '@/hooks/useGuias';
 import { useTemasProfesor } from '@/hooks/useTemasProfesor';
@@ -59,11 +60,11 @@ import {
   getMissingFields as getMissingFieldsUtil,
   calculateSectionProgress,
   formatDate,
+  formatRelativeTime,
   getEstadoLabel,
   getGradosForNivel,
   SECCIONES_DISPONIBLES,
   type FormData,
-  type ViewMode,
   type NivelEducativo
 } from '@/components/profesor/GenerarClase';
 import { WizardProgress } from '@/components/profesor/GenerarClase/WizardProgress';
@@ -78,9 +79,11 @@ export default function GenerarClase() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { profesorId } = useProfesor();
-  const { asignaciones, grupos, cursos } = useAsignaciones('2025');
+  const { anioActivo } = useAniosEscolares();
+  const anioEscolar = anioActivo?.anio_escolar || String(new Date().getFullYear());
+  const { asignaciones, grupos } = useAsignaciones(anioEscolar);
   const { clases, isLoading: clasesLoading, deleteClase } = useClases();
-  const { cursosConTemas } = useTemasProfesor('2025');
+  const { cursosConTemas } = useTemasProfesor(anioEscolar);
   
   const temaId = searchParams.get('tema');
   const cursoId = searchParams.get('curso') || searchParams.get('materia');
@@ -135,10 +138,15 @@ export default function GenerarClase() {
 
   // Generated content
   const [guiaGenerada, setGuiaGenerada] = useState<GuiaClaseData | null>(null);
+  const [guiaSaveStatus, setGuiaSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [guiaSaveError, setGuiaSaveError] = useState<string | null>(null);
+  const [guiaLastSavedAt, setGuiaLastSavedAt] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const lastSavedSnapshotRef = useRef<string | null>(null);
   
   // Hooks for DB operations
   const { createClase, updateClase } = useClases();
-  const { createGuiaVersion } = useGuiasClase(claseData?.id);
+  const { createGuiaVersion, updateGuiaVersion } = useGuiasClase(claseData?.id);
 
   // Derived grado info from grupo
   const gradoInfo = useMemo(() => 
@@ -151,6 +159,104 @@ export default function GenerarClase() {
     calculateSectionProgress(formData, isExtraordinaria, temaData, grupoData),
     [formData, isExtraordinaria, temaData, grupoData]
   );
+
+  const serializeGuia = useCallback((guia: GuiaClaseData | null) => {
+    if (!guia) return null;
+    try {
+      return JSON.stringify(guia);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const hydrateGuiaState = useCallback((guia: GuiaClaseData | null) => {
+    setGuiaGenerada(guia);
+    lastSavedSnapshotRef.current = serializeGuia(guia);
+    setGuiaSaveStatus('idle');
+    setGuiaSaveError(null);
+    setGuiaLastSavedAt(null);
+  }, [serializeGuia]);
+
+  const saveGuiaVersion = useCallback(async (guia: GuiaClaseData) => {
+    if (!claseData?.id_guia_version_actual || isClaseCompletada) return true;
+
+    const snapshot = serializeGuia(guia);
+    if (!snapshot || snapshot === lastSavedSnapshotRef.current) return true;
+
+    setGuiaSaveStatus('saving');
+    setGuiaSaveError(null);
+
+    try {
+      await updateGuiaVersion.mutateAsync({
+        id: claseData.id_guia_version_actual,
+        contenido: guia,
+        estructura: guia.momentos_sesion,
+        objetivos: guia.propositos_aprendizaje.map((p) => p.competencia).join('\n'),
+        silent: true,
+      });
+
+      lastSavedSnapshotRef.current = snapshot;
+      setGuiaSaveStatus('saved');
+      setGuiaLastSavedAt(new Date());
+      return true;
+    } catch (error: any) {
+      setGuiaSaveStatus('error');
+      setGuiaSaveError(error?.message || 'No se pudo guardar la guía');
+      return false;
+    }
+  }, [claseData?.id_guia_version_actual, isClaseCompletada, serializeGuia, updateGuiaVersion]);
+
+  const flushPendingGuiaSave = useCallback(async () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    if (!guiaGenerada || !claseData?.id_guia_version_actual || isClaseCompletada) {
+      return true;
+    }
+
+    return saveGuiaVersion(guiaGenerada);
+  }, [claseData?.id_guia_version_actual, guiaGenerada, isClaseCompletada, saveGuiaVersion]);
+
+  const handleGuiaChange = useCallback((guia: GuiaClaseData) => {
+    setGuiaGenerada(guia);
+  }, []);
+
+  useEffect(() => {
+    if (!guiaGenerada || !claseData?.id_guia_version_actual || isClaseCompletada) return;
+
+    const snapshot = serializeGuia(guiaGenerada);
+    if (!snapshot || snapshot === lastSavedSnapshotRef.current) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    setGuiaSaveStatus('saving');
+    setGuiaSaveError(null);
+
+    saveTimeoutRef.current = window.setTimeout(() => {
+      saveTimeoutRef.current = null;
+      void saveGuiaVersion(guiaGenerada);
+    }, 1200);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [claseData?.id_guia_version_actual, guiaGenerada, isClaseCompletada, saveGuiaVersion, serializeGuia]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // One-time cleanup of old draft localStorage keys
   useEffect(() => {
@@ -169,10 +275,6 @@ export default function GenerarClase() {
       ['generando_clase', 'editando_guia'].includes(c.estado)
     );
   }, [clases]);
-
-  const claseEnEdicion = useMemo(() => {
-    return clasesEnProceso[0] || null;
-  }, [clasesEnProceso]);
 
   const sesionesPendientes = useMemo(() => {
     return clases
@@ -286,6 +388,12 @@ export default function GenerarClase() {
             
             if (!claseError && clase) {
               setClaseData(clase);
+              const esExtraordinariaActual = !clase.id_tema;
+              setIsExtraordinaria(esExtraordinariaActual);
+              if (esExtraordinariaActual) {
+                setTemaData(null);
+                setCursoData(null);
+              }
               
               // Parse nivel/grado from grupo if available
               if (clase.grupo) {
@@ -297,14 +405,16 @@ export default function GenerarClase() {
                   contexto: clase.contexto || '',
                   nivel: (parsed.nivel as NivelEducativo) || '',
                   grado: parsed.gradoNum || '',
-                  seccion: clase.grupo?.seccion || ''
+                  seccion: clase.grupo?.seccion || '',
+                  temaPersonalizado: clase.tema_personalizado || ''
                 }));
               } else {
                 setFormData(prev => ({
                   ...prev,
                   fecha: clase.fecha_programada || '',
                   duracion: clase.duracion_minutos || 90,
-                  contexto: clase.contexto || ''
+                  contexto: clase.contexto || '',
+                  temaPersonalizado: clase.tema_personalizado || ''
                 }));
               }
 
@@ -318,12 +428,14 @@ export default function GenerarClase() {
 
                   if (guia && guia.contenido) {
                     const contenidoGuia = guia.contenido as any;
-                    setGuiaGenerada(contenidoGuia);
+                    hydrateGuiaState(contenidoGuia);
                     setCurrentStep(2);
                   }
                 } catch (error) {
                   console.error('Error loading guide:', error);
                 }
+              } else {
+                hydrateGuiaState(null);
               }
             }
           }
@@ -354,6 +466,8 @@ export default function GenerarClase() {
           if (claseError) throw claseError;
           
           setClaseData(clase);
+          const esExtraordinariaActual = !clase.id_tema;
+          setIsExtraordinaria(esExtraordinariaActual);
           
           if (clase.tema) {
             setTemaData(clase.tema);
@@ -365,6 +479,9 @@ export default function GenerarClase() {
               .single();
             
             if (curso) setCursoData(curso);
+          } else {
+            setTemaData(null);
+            setCursoData(null);
           }
           
           if (clase.grupo) {
@@ -378,14 +495,16 @@ export default function GenerarClase() {
               contexto: clase.contexto || '',
               nivel: (parsed.nivel as NivelEducativo) || '',
               grado: parsed.gradoNum || '',
-              seccion: clase.grupo?.seccion || ''
+              seccion: clase.grupo?.seccion || '',
+              temaPersonalizado: clase.tema_personalizado || ''
             }));
           } else {
             setFormData(prev => ({
               ...prev,
               fecha: clase.fecha_programada || '',
               duracion: clase.duracion_minutos || 90,
-              contexto: clase.contexto || ''
+              contexto: clase.contexto || '',
+              temaPersonalizado: clase.tema_personalizado || ''
             }));
           }
 
@@ -395,16 +514,18 @@ export default function GenerarClase() {
                 .from('guias_clase_versiones')
                 .select('*')
                 .eq('id', clase.id_guia_version_actual)
-                .single();
+              .single();
 
               if (guia && guia.contenido) {
                 const contenidoGuia = guia.contenido as any;
-                setGuiaGenerada(contenidoGuia);
+                hydrateGuiaState(contenidoGuia);
                 setCurrentStep(2);
               }
             } catch (error) {
               console.error('Error loading guide:', error);
             }
+          } else {
+            hydrateGuiaState(null);
           }
           
           setIsLoadingData(false);
@@ -426,7 +547,7 @@ export default function GenerarClase() {
     if (profesorId) {
       loadData();
     }
-  }, [temaId, cursoId, claseId, profesorId, asignaciones]);
+  }, [temaId, cursoId, claseId, profesorId, asignaciones, hydrateGuiaState, toast]);
 
   // Effect to advance to appropriate step when data is loaded (but not if user manually navigated back)
   useEffect(() => {
@@ -442,6 +563,8 @@ export default function GenerarClase() {
   // Handler: Select a session to continue
   const handleSeleccionarSesion = async (clase: Clase) => {
     setClaseData(clase);
+    const esExtraordinariaActual = !clase.id_tema;
+    setIsExtraordinaria(esExtraordinariaActual);
     
     if (clase.tema) {
       setTemaData(clase.tema);
@@ -453,6 +576,9 @@ export default function GenerarClase() {
         .single();
       
       if (curso) setCursoData(curso);
+    } else {
+      setTemaData(null);
+      setCursoData(null);
     }
     
     if (clase.grupo) {
@@ -466,14 +592,16 @@ export default function GenerarClase() {
         contexto: clase.contexto || '',
         nivel: (parsed.nivel as NivelEducativo) || '',
         grado: parsed.gradoNum || '',
-        seccion: clase.grupo?.seccion || ''
+        seccion: clase.grupo?.seccion || '',
+        temaPersonalizado: clase.tema_personalizado || ''
       }));
     } else {
       setFormData(prev => ({
         ...prev,
         fecha: clase.fecha_programada || '',
         duracion: clase.duracion_minutos || 90,
-        contexto: clase.contexto || ''
+        contexto: clase.contexto || '',
+        temaPersonalizado: clase.tema_personalizado || ''
       }));
     }
     
@@ -486,14 +614,15 @@ export default function GenerarClase() {
           .single();
         if (guia && guia.contenido) {
           const contenidoGuia = guia.contenido as any;
-          setGuiaGenerada(contenidoGuia);
+          hydrateGuiaState(contenidoGuia);
         }
       } catch (error) {
         console.error('Error loading guide:', error);
       }
+    } else {
+      hydrateGuiaState(null);
     }
     
-    setIsExtraordinaria(false);
     setViewMode('wizard');
   };
 
@@ -522,7 +651,7 @@ export default function GenerarClase() {
       contexto: '',
       temaPersonalizado: ''
     });
-    setGuiaGenerada(null);
+    hydrateGuiaState(null);
     setCurrentStep(1);
     setViewMode('wizard');
   };
@@ -554,7 +683,7 @@ export default function GenerarClase() {
     setCursoData(null);
     setGrupoData(null);
     setClaseData(null);
-    setGuiaGenerada(null);
+    hydrateGuiaState(null);
     setCurrentStep(1);
   };
 
@@ -571,45 +700,15 @@ export default function GenerarClase() {
       throw new Error('Faltan datos necesarios para crear la clase (nivel y grado)');
     }
 
-    // Try to find a matching group or use the first available one
-    let groupToUse = grupoData;
-    
-    if (!groupToUse && isExtraordinaria) {
-      // Try to find a matching group based on nivel/grado/seccion
-      const gradoPattern = formData.nivel === 'Inicial' 
-        ? `${formData.grado} años`
-        : `${formData.grado}° ${formData.nivel}`;
-      
-      // First try in assigned groups
-      groupToUse = grupos.find(g => {
-        if (!g) return false;
-        const matchesGrado = g.grado?.includes(gradoPattern) || g.grado === gradoPattern;
-        const matchesSeccion = !formData.seccion || g.seccion === formData.seccion;
-        return matchesGrado && matchesSeccion;
-      }) || grupos.find(g => g?.grado?.includes(gradoPattern)) || grupos[0];
-      
-      // If not found in assigned groups, search globally in the database
-      if (!groupToUse) {
-        const { data: allGroups } = await supabase
-          .from('grupos')
-          .select('*')
-          .ilike('grado', `%${gradoPattern}%`);
-        
-        if (allGroups && allGroups.length > 0) {
-          const match = allGroups.find(g => 
-            (!formData.seccion || g.seccion === formData.seccion)
-          );
-          groupToUse = match || allGroups[0];
-        }
-      }
-      
-      if (groupToUse) {
-        setGrupoData(groupToUse);
-      }
-    }
+    // For extraordinary sessions, an assigned group must be explicitly selected.
+    const groupToUse = grupoData;
 
     if (!groupToUse) {
-      throw new Error('No se encontró un grupo disponible. Contacta al administrador.');
+      throw new Error('Selecciona un grupo asignado antes de continuar.');
+    }
+
+    if (isExtraordinaria && !grupos.some(g => g?.id === groupToUse.id)) {
+      throw new Error('Solo puedes crear clases extraordinarias en grupos que tienes asignados.');
     }
 
     // Para clases extraordinarias, id_tema puede ser null
@@ -621,6 +720,7 @@ export default function GenerarClase() {
       fecha_programada: formData.fecha || new Date().toISOString().split('T')[0],
       duracion_minutos: formData.duracion,
       contexto: formData.contexto,
+      tema_personalizado: isExtraordinaria ? formData.temaPersonalizado.trim() || null : null,
     });
 
     setClaseData(nuevaClase);
@@ -663,8 +763,8 @@ export default function GenerarClase() {
       const response = await supabase.functions.invoke('generate-desempenos', {
         body: {
           tema: temaNombre,
-          nivel: gradoInfo?.nivel || 'Secundaria',
-          grado: gradoInfo?.gradoNum || '3',
+          nivel: formData.nivel || gradoInfo?.nivel || 'Secundaria',
+          grado: formData.grado || gradoInfo?.gradoNum || '3',
           area: areaName,
           competencia: competenciaData?.nombre || '',
           capacidades: capacidadesNames
@@ -824,20 +924,37 @@ export default function GenerarClase() {
       return;
     }
 
+    if (isExtraordinaria && !grupoData?.id) {
+      toast({
+        title: 'Error',
+        description: 'Selecciona un grupo asignado antes de continuar',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsGenerating(true);
+    let claseIdEnProceso: string | null = claseData?.id || null;
     try {
       const clase = await ensureClase();
+      claseIdEnProceso = clase.id;
+      const materialesSeleccionados = formData.materialOtro.trim()
+        ? [...formData.materiales, formData.materialOtro.trim()]
+        : formData.materiales;
       
-      await updateClase.mutateAsync({
+      const claseGenerando = await updateClase.mutateAsync({
         id: clase.id,
         estado: 'generando_clase',
         contexto: formData.contexto,
+        tema_personalizado: isExtraordinaria ? formData.temaPersonalizado.trim() || null : null,
+        silent: true,
       });
+      setClaseData((prev: any) => ({ ...prev, ...claseGenerando }));
 
       const guia = await generateGuiaClase(
         temaNombre,
         formData.contexto,
-        formData.materiales,
+        materialesSeleccionados,
         {
           grado: isExtraordinaria 
             ? (formData.nivel === 'Inicial' ? `${formData.grado} años` : `${formData.grado}° ${formData.nivel}`)
@@ -863,7 +980,7 @@ export default function GenerarClase() {
             .filter(Boolean) as string[],
           adaptaciones: formData.adaptaciones.map(id => tiposAdaptacion.find(t => t.id === id)?.nombre || ''),
           adaptacionesPersonalizadas: formData.adaptacionesPersonalizadas,
-          materiales: formData.materiales
+          materiales: materialesSeleccionados
         }
       );
 
@@ -879,15 +996,35 @@ export default function GenerarClase() {
         estado: 'borrador'
       });
 
-      await updateClase.mutateAsync({
+      const claseEditando = await updateClase.mutateAsync({
         id: clase.id,
         estado: 'editando_guia',
-        id_guia_version_actual: guiaVersion.id
+        id_guia_version_actual: guiaVersion.id,
+        silent: true,
       });
+      setClaseData((prev: any) => ({ ...prev, ...claseEditando }));
+
+      // Mark the generated guide as the latest persisted snapshot.
+      lastSavedSnapshotRef.current = serializeGuia(guia);
+      setGuiaSaveStatus('saved');
+      setGuiaLastSavedAt(new Date());
+      setGuiaSaveError(null);
 
       toast({ title: '¡Guía generada!', description: 'La guía de clase ha sido creada con éxito' });
       setCurrentStep(2);
     } catch (error: any) {
+      if (claseIdEnProceso) {
+        try {
+          const claseRollback = await updateClase.mutateAsync({
+            id: claseIdEnProceso,
+            estado: 'borrador',
+            silent: true,
+          });
+          setClaseData((prev: any) => ({ ...prev, ...claseRollback }));
+        } catch (rollbackError) {
+          console.error('Error rolling back clase state:', rollbackError);
+        }
+      }
       toast({
         title: 'Error',
         description: 'Error al generar la guía: ' + error.message,
@@ -909,9 +1046,20 @@ export default function GenerarClase() {
     }
 
     try {
+      const saved = await flushPendingGuiaSave();
+      if (!saved) {
+        toast({
+          title: 'No se pudo guardar la guía',
+          description: 'Corrige los errores de guardado antes de validar.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       await updateClase.mutateAsync({
         id: claseData.id,
-        estado: 'clase_programada'
+        estado: 'clase_programada',
+        silent: true,
       });
 
       toast({ title: '¡Clase validada!', description: 'Tu clase está lista para ser impartida' });
@@ -927,7 +1075,11 @@ export default function GenerarClase() {
 
   // Validation helper using utility function
   const getMissingFields = () => {
-    return getMissingFieldsUtil(formData, isExtraordinaria, temaData, grupoData);
+    const missing = getMissingFieldsUtil(formData, isExtraordinaria, temaData, grupoData);
+    if (isExtraordinaria && !grupoData?.id) {
+      missing.push('Grupo asignado');
+    }
+    return missing;
   };
 
   const canProceed = () => {
@@ -940,6 +1092,26 @@ export default function GenerarClase() {
         return true;
     }
   };
+
+  const guiaSaveMessage = useMemo(() => {
+    if (!claseData?.id_guia_version_actual || !guiaGenerada || isClaseCompletada) {
+      return null;
+    }
+
+    if (guiaSaveStatus === 'saving') {
+      return { text: 'Guardando...', tone: 'muted' as const };
+    }
+
+    if (guiaSaveStatus === 'error') {
+      return { text: guiaSaveError || 'Error al guardar', tone: 'error' as const };
+    }
+
+    if (guiaSaveStatus === 'saved' && guiaLastSavedAt) {
+      return { text: `Guardado ${formatRelativeTime(guiaLastSavedAt)}`, tone: 'success' as const };
+    }
+
+    return null;
+  }, [claseData?.id_guia_version_actual, guiaGenerada, guiaLastSavedAt, guiaSaveError, guiaSaveStatus, isClaseCompletada]);
 
   // Note: formatDate and getEstadoLabel are now imported from utils
 
@@ -966,37 +1138,41 @@ export default function GenerarClase() {
           </p>
         </div>
 
-        {/* Clase en Proceso */}
-        {claseEnEdicion && (
+        {/* Clases en Proceso */}
+        {clasesEnProceso.length > 0 && (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="text-sm text-primary font-medium">Clase en proceso</p>
-                    <p className="font-semibold">
-                      {claseEnEdicion.tema?.nombre || 'Sin tema'} • {claseEnEdicion.grupo?.grado}° {claseEnEdicion.grupo?.seccion || ''}
-                    </p>
-                    <Badge variant="secondary" className="mt-1">
-                      {getEstadoLabel(claseEnEdicion.estado)}
-                    </Badge>
+              <div className="space-y-3">
+                {clasesEnProceso.map((claseEnProceso) => (
+                  <div key={claseEnProceso.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="text-sm text-primary font-medium">Clase en proceso</p>
+                        <p className="font-semibold">
+                          {claseEnProceso.tema?.nombre || claseEnProceso.tema_personalizado || 'Sin tema'} • {claseEnProceso.grupo?.grado}° {claseEnProceso.grupo?.seccion || ''}
+                        </p>
+                        <Badge variant="secondary" className="mt-1">
+                          {getEstadoLabel(claseEnProceso.estado)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => handleDescartar(claseEnProceso.id)}
+                      >
+                        Descartar
+                      </Button>
+                      <Button 
+                        variant="gradient"
+                        onClick={() => handleSeleccionarSesion(claseEnProceso)}
+                      >
+                        Continuar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => handleDescartar(claseEnEdicion.id)}
-                  >
-                    Descartar
-                  </Button>
-                  <Button 
-                    variant="gradient"
-                    onClick={() => handleSeleccionarSesion(claseEnEdicion)}
-                  >
-                    Continuar
-                  </Button>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -1104,7 +1280,7 @@ export default function GenerarClase() {
         )}
 
         {/* Empty state */}
-        {!sesionSugerida && sesionesFiltradas.length === 0 && !claseEnEdicion && (
+        {!sesionSugerida && sesionesFiltradas.length === 0 && clasesEnProceso.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -1122,7 +1298,7 @@ export default function GenerarClase() {
               <div>
                 <p className="font-medium">Crear Clase Extraordinaria</p>
                 <p className="text-sm text-muted-foreground">
-                  Define un tema personalizado fuera del plan curricular
+                  Tema libre, grupo obligatorio
                 </p>
               </div>
               <Button variant="outline" onClick={handleCrearExtraordinaria}>
@@ -1186,6 +1362,11 @@ export default function GenerarClase() {
             <p className="text-muted-foreground">
               Crea clases centradas en el desarrollo del pensamiento crítico
             </p>
+            {isExtraordinaria && (
+              <Badge variant="outline" className="mt-2">
+                Tema libre, grupo obligatorio
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -1304,15 +1485,6 @@ export default function GenerarClase() {
                         value={formData.grado} 
                         onValueChange={(value) => {
                           setFormData({...formData, grado: value});
-                          // Try to find matching group
-                          const matchingGroup = grupos.find(g => {
-                            if (!g) return false;
-                            const gradoPattern = formData.nivel === 'Inicial' 
-                              ? `${value} años`
-                              : `${value}° ${formData.nivel}`;
-                            return g.grado?.includes(gradoPattern) || g.grado === `${value}° ${formData.nivel}`;
-                          });
-                          if (matchingGroup) setGrupoData(matchingGroup);
                         }}
                         disabled={isClaseCompletada || !formData.nivel || !isExtraordinaria}
                       >
@@ -1332,19 +1504,7 @@ export default function GenerarClase() {
                       <Label>Sección</Label>
                       <Select 
                         value={formData.seccion} 
-                        onValueChange={(value) => {
-                          setFormData({...formData, seccion: value});
-                          // Try to find exact matching group
-                          const matchingGroup = grupos.find(g => {
-                            if (!g) return false;
-                            const gradoPattern = formData.nivel === 'Inicial' 
-                              ? `${formData.grado} años`
-                              : `${formData.grado}° ${formData.nivel}`;
-                            return (g.grado?.includes(gradoPattern) || g.grado === `${formData.grado}° ${formData.nivel}`) 
-                              && g.seccion === value;
-                          });
-                          if (matchingGroup) setGrupoData(matchingGroup);
-                        }}
+                        onValueChange={(value) => setFormData({...formData, seccion: value})}
                         disabled={isClaseCompletada || !formData.grado || !isExtraordinaria}
                       >
                         <SelectTrigger>
@@ -1357,6 +1517,45 @@ export default function GenerarClase() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Grupo asignado (solo extraordinaria) */}
+                    {isExtraordinaria && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Grupo asignado *</Label>
+                        <Select
+                          value={grupoData?.id}
+                          onValueChange={(value) => {
+                            const selected = grupos.find(g => g?.id === value);
+                            if (!selected) return;
+                            setGrupoData(selected);
+                            const parsed = parseGradoFromGrupo(selected);
+                            setFormData(prev => ({
+                              ...prev,
+                              nivel: (parsed.nivel as NivelEducativo) || prev.nivel,
+                              grado: parsed.gradoNum || prev.grado,
+                              seccion: selected.seccion || ''
+                            }));
+                          }}
+                          disabled={isClaseCompletada}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona uno de tus grupos asignados" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gruposDisponibles.map((grupo) => (
+                              <SelectItem key={grupo.id} value={grupo.id}>
+                                {grupo.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!grupoData?.id && (
+                          <p className="text-xs text-amber-700">
+                            Debes elegir un grupo asignado para generar una clase extraordinaria.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Fecha */}
                     <div className="space-y-2">
@@ -1744,6 +1943,18 @@ export default function GenerarClase() {
             {/* Step 2: Guía de Clase */}
             {currentStep === 2 && (
               <div className="space-y-6">
+                {guiaSaveMessage && (
+                  <div className={`text-xs ${
+                    guiaSaveMessage.tone === 'error'
+                      ? 'text-destructive'
+                      : guiaSaveMessage.tone === 'success'
+                        ? 'text-emerald-700'
+                        : 'text-muted-foreground'
+                  }`}>
+                    {guiaSaveMessage.text}
+                  </div>
+                )}
+
                 {/* Read-only mode banner for completed classes */}
                 {isClaseCompletada && (
                   <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
@@ -1782,7 +1993,7 @@ export default function GenerarClase() {
                     guia={guiaGenerada}
                     duracion={formData.duracion}
                     isLoaded={!!claseData?.id_guia_version_actual}
-                    onGuiaChange={setGuiaGenerada}
+                    onGuiaChange={handleGuiaChange}
                     readOnly={isClaseCompletada}
                   />
                 )}
@@ -1808,6 +2019,18 @@ export default function GenerarClase() {
                 <li key={i}>{field}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {currentStep === 2 && guiaSaveMessage && (
+          <div className={`text-xs text-right ${
+            guiaSaveMessage.tone === 'error'
+              ? 'text-destructive'
+              : guiaSaveMessage.tone === 'success'
+                ? 'text-emerald-700'
+                : 'text-muted-foreground'
+          }`}>
+            {guiaSaveMessage.text}
           </div>
         )}
 

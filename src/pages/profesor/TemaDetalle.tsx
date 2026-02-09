@@ -28,6 +28,7 @@ import { useGuiaTemaDetalle, useClasesByTema } from '@/hooks/useGuias';
 import { useClases } from '@/hooks/useClases';
 import { useProfesor } from '@/hooks/useProfesor';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
+import { useAniosEscolares } from '@/hooks/useAniosEscolares';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import {
@@ -60,7 +61,9 @@ export default function TemaDetalle() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profesorId } = useProfesor();
-  const { grupos } = useAsignaciones('2025');
+  const { anioActivo } = useAniosEscolares();
+  const anioEscolar = anioActivo?.anio_escolar || String(new Date().getFullYear());
+  const { grupos } = useAsignaciones(anioEscolar);
   const { guiaTema, tema, isLoading: loadingGuia } = useGuiaTemaDetalle(temaId);
   const { clases, clasesByGrupo, stats: clasesStats, isLoading: loadingClases } = useClasesByTema(temaId);
   const { createClase } = useClases();
@@ -729,4 +732,3 @@ export default function TemaDetalle() {
     </div>
   );
 }
-

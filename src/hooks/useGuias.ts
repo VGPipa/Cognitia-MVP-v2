@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { useProfesor } from './useProfesor';
 
 type GuiaVersionRow = Database['public']['Tables']['guias_clase_versiones']['Row'];
 type GuiaTemaRow = Database['public']['Tables']['guias_tema']['Row'];
@@ -119,7 +120,7 @@ export function useGuiasClase(claseId?: string) {
   });
 
   const updateGuiaVersion = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<GuiaVersionRow> & { id: string }) => {
+    mutationFn: async ({ id, silent, ...updates }: Partial<GuiaVersionRow> & { id: string; silent?: boolean }) => {
       const { data, error } = await supabase
         .from('guias_clase_versiones')
         .update(updates)
@@ -130,12 +131,16 @@ export function useGuiasClase(claseId?: string) {
       if (error) throw error;
       return data as GuiaVersion;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['guias-clase', data.id_clase] });
-      toast.success('Guía actualizada');
+      if (!variables?.silent) {
+        toast.success('Guía actualizada');
+      }
     },
-    onError: (error: any) => {
-      toast.error('Error al actualizar: ' + error.message);
+    onError: (error: any, variables) => {
+      if (!variables?.silent) {
+        toast.error('Error al actualizar: ' + error.message);
+      }
     },
   });
 
@@ -330,10 +335,12 @@ export interface ClaseConDetalles {
  * Incluye información del tema, curso, y la guía maestra si existe
  */
 export function useGuiaTemaDetalle(temaId?: string) {
+  const { profesorId } = useProfesor();
+
   const { data: guiaTema, isLoading, error, refetch } = useQuery({
-    queryKey: ['guia-tema-detalle', temaId],
+    queryKey: ['guia-tema-detalle', temaId, profesorId],
     queryFn: async () => {
-      if (!temaId) return null;
+      if (!temaId || !profesorId) return null;
 
       // Get tema info with curso
       const { data: tema, error: temaError } = await supabase
@@ -358,11 +365,12 @@ export function useGuiaTemaDetalle(temaId?: string) {
 
       if (temaError) throw temaError;
 
-      // Get guia_tema if exists (any profesor for now, or we could filter by current user)
+      // Get guia_tema only for current profesor
       const { data: guia, error: guiaError } = await supabase
         .from('guias_tema')
         .select('*')
         .eq('id_tema', temaId)
+        .eq('id_profesor', profesorId)
         .maybeSingle();
 
       if (guiaError && guiaError.code !== 'PGRST116') throw guiaError;
@@ -372,7 +380,7 @@ export function useGuiaTemaDetalle(temaId?: string) {
         tema: tema as GuiaTemaDetalle['tema']
       } as GuiaTemaDetalle | null;
     },
-    enabled: !!temaId,
+    enabled: !!temaId && !!profesorId,
   });
 
   return {
@@ -389,10 +397,12 @@ export function useGuiaTemaDetalle(temaId?: string) {
  * Agrupa por grupo y ordena por número de clase
  */
 export function useClasesByTema(temaId?: string) {
+  const { profesorId } = useProfesor();
+
   const { data: clases = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['clases-by-tema', temaId],
+    queryKey: ['clases-by-tema', temaId, profesorId],
     queryFn: async () => {
-      if (!temaId) return [];
+      if (!temaId || !profesorId) return [];
 
       const { data, error } = await supabase
         .from('clases')
@@ -407,13 +417,14 @@ export function useClasesByTema(temaId?: string) {
           )
         `)
         .eq('id_tema', temaId)
+        .eq('id_profesor', profesorId)
         .order('numero_sesion', { ascending: true })
         .order('fecha_programada', { ascending: true });
 
       if (error) throw error;
       return (data || []) as ClaseConDetalles[];
     },
-    enabled: !!temaId,
+    enabled: !!temaId && !!profesorId,
   });
 
   // Group clases by grupo
@@ -454,4 +465,3 @@ export function useClasesByTema(temaId?: string) {
     refetch
   };
 }
-

@@ -26,6 +26,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { useTemasProfesor } from '@/hooks/useTemasProfesor';
 import { useProfesor } from '@/hooks/useProfesor';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
+import { useAniosEscolares } from '@/hooks/useAniosEscolares';
 import { useGuiasTema } from '@/hooks/useGuias';
 import { useClases } from '@/hooks/useClases';
 import { generateGuiaMaestra } from '@/lib/ai/generate';
@@ -60,8 +61,10 @@ export default function Planificacion() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profesorId } = useProfesor();
-  const { asignaciones, grupos } = useAsignaciones('2025');
-  const { cursosConTemas, isLoading, stats, getTemasByBimestre } = useTemasProfesor('2025');
+  const { anioActivo } = useAniosEscolares();
+  const anioEscolar = anioActivo?.anio_escolar || String(new Date().getFullYear());
+  const { asignaciones, grupos } = useAsignaciones(anioEscolar);
+  const { cursosConTemas, isLoading, stats, getTemasByBimestre } = useTemasProfesor(anioEscolar);
   const { createClase } = useClases();
   const [selectedCurso, setSelectedCurso] = useState<string | null>(null);
   const [iniciarTemaDialogOpen, setIniciarTemaDialogOpen] = useState(false);
@@ -240,7 +243,7 @@ export default function Planificacion() {
     return (
       <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold">Planificación Académica 2025</h1>
+          <h1 className="text-2xl font-bold">Planificación Académica {anioEscolar}</h1>
           <p className="text-muted-foreground">
             Gestiona tus cursos, temas y clases
           </p>
@@ -260,7 +263,7 @@ export default function Planificacion() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Planificación Académica 2025</h1>
+        <h1 className="text-2xl font-bold">Planificación Académica {anioEscolar}</h1>
         <p className="text-muted-foreground">
           Gestiona tus cursos, temas y clases
         </p>
