@@ -24,7 +24,6 @@ const MOCK_HIJOS = [
     grado: '3ro Primaria',
     seccion: 'A',
     promedioGeneral: 82,
-    quizzesCompletados: 24,
     ultimaActividad: 'hace 2 horas'
   },
   {
@@ -34,7 +33,6 @@ const MOCK_HIJOS = [
     grado: '1ro Secundaria',
     seccion: 'B',
     promedioGeneral: 88,
-    quizzesCompletados: 28,
     ultimaActividad: 'hace 1 día'
   }
 ];
@@ -123,10 +121,6 @@ export default function ApoderadoDashboard() {
                     <div>
                       <p className="text-2xl font-bold text-primary">{hijo.promedioGeneral}%</p>
                       <p className="text-xs text-muted-foreground">Promedio general</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{hijo.quizzesCompletados}</p>
-                      <p className="text-xs text-muted-foreground">Quizzes completados</p>
                     </div>
                   </div>
                   
@@ -229,20 +223,20 @@ export default function ApoderadoDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Próximas Evaluaciones</CardTitle>
+              <CardTitle className="text-base">Próximas Actividades</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
                 <BookOpen className="w-4 h-4 text-primary" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Quiz de Matemáticas</p>
+                  <p className="text-sm font-medium">Clase de Matemáticas</p>
                   <p className="text-xs text-muted-foreground">Juan - Mañana</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
                 <BookOpen className="w-4 h-4 text-primary" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Quiz de Ciencias</p>
+                  <p className="text-sm font-medium">Clase de Ciencias</p>
                   <p className="text-xs text-muted-foreground">María - En 3 días</p>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useClases } from '@/hooks/useClases';
 import { useAsignaciones } from '@/hooks/useAsignaciones';
-import { useRecomendacionesSalon } from '@/hooks/useMisSalones';
-import { useQuizzes } from '@/hooks/useQuizzes';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EstadoClase } from '@/components/profesor/EstadoClase';
@@ -28,8 +26,7 @@ import {
   AlertCircle,
   FileText,
   CheckCircle2,
-  Lightbulb,
-  PlayCircle
+  Lightbulb
 } from 'lucide-react';
 
 
@@ -37,9 +34,7 @@ const estadoBadgeConfig: Record<string, { label: string; variant: 'default' | 's
   sin_guia: { label: 'Sin guía', variant: 'destructive' },
   generando_clase: { label: 'Generando...', variant: 'secondary' },
   editando_guia: { label: 'Editando guía', variant: 'outline' },
-  guia_aprobada: { label: 'Guía lista', variant: 'default' },
-  quiz_pre_enviado: { label: 'Quiz PRE enviado', variant: 'secondary' },
-  quiz_post_enviado: { label: 'Quiz POST enviado', variant: 'secondary' }
+  guia_aprobada: { label: 'Guía lista', variant: 'default' }
 };
 
 export default function ProfesorDashboard() {
@@ -47,7 +42,6 @@ export default function ProfesorDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState('preparacion');
-  const [activatingQuiz, setActivatingQuiz] = useState<{ claseId: string; tipo: 'previo' | 'post' } | null>(null);
   
   // State for guide modal
   const [guiaModalOpen, setGuiaModalOpen] = useState(false);
@@ -58,9 +52,6 @@ export default function ProfesorDashboard() {
   // Get real data
   const { clases, isLoading: clasesLoading } = useClases();
   const { asignaciones, cursos, grupos } = useAsignaciones('2025');
-  
-  // Hook for quiz operations
-  const { publishQuiz, closeQuiz } = useQuizzes();
   
   // Calculate stats
   const stats = useMemo(() => {
@@ -82,7 +73,7 @@ export default function ProfesorDashboard() {
       clasesEstaSemana,
       cursosAsignados: cursos.length,
       totalEstudiantes,
-      promedioGeneral: 0 // TODO: Calculate from quiz results
+      promedioGeneral: 0
     };
   }, [clases, cursos, grupos]);
   
@@ -135,220 +126,6 @@ export default function ProfesorDashboard() {
     return { hoy: hoyClases, manana: mananaClases, estaSemana: estaSemanaClases };
   }, [clases]);
   
-  // Load quizzes for all programmed classes
-  const clasesProgramadasIds = useMemo(() => {
-    const all = [
-      ...clasesProgramadas.hoy,
-      ...clasesProgramadas.manana,
-      ...clasesProgramadas.estaSemana
-    ];
-    return all.map(c => c.id);
-  }, [clasesProgramadas]);
-  
-  // Fetch quizzes for all classes (including those in preparation)
-  const todasLasClasesIds = useMemo(() => {
-    return [...new Set([...clases.map(c => c.id), ...clasesProgramadasIds])];
-  }, [clases, clasesProgramadasIds]);
-  
-  const [quizzesMap, setQuizzesMap] = useState<Record<string, { previo?: string; post?: string }>>({});
-  
-  React.useEffect(() => {
-    const loadQuizzes = async () => {
-      if (todasLasClasesIds.length === 0) return;
-      
-      const { data: quizzes, error } = await supabase
-        .from('quizzes')
-        .select('id, id_clase, tipo, estado')
-        .in('id_clase', todasLasClasesIds)
-        .in('tipo', ['previo', 'post']);
-      
-      if (error) {
-        console.error('Error loading quizzes:', error);
-        return;
-      }
-      
-      const map: Record<string, { previo?: string; post?: string }> = {};
-      quizzes?.forEach(quiz => {
-        if (!map[quiz.id_clase]) {
-          map[quiz.id_clase] = {};
-        }
-        if (quiz.tipo === 'previo') {
-          map[quiz.id_clase].previo = quiz.estado;
-        } else if (quiz.tipo === 'post') {
-          map[quiz.id_clase].post = quiz.estado;
-        }
-      });
-      
-      setQuizzesMap(map);
-    };
-    
-    loadQuizzes();
-  }, [todasLasClasesIds]);
-  
-  // Get recommendations from first grupo (or combine all)
-  const primerGrupoId = grupos[0]?.id || null;
-  const { data: recomendaciones = [] } = useRecomendacionesSalon(primerGrupoId);
-
-  // Handler to activate/finalize PRE quiz
-  const handleActivarQuizPre = async (claseId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setActivatingQuiz({ claseId, tipo: 'previo' });
-    try {
-      // Get PRE quiz for this class
-      const { data: quiz, error: quizError } = await supabase
-        .from('quizzes')
-        .select('id, estado')
-        .eq('id_clase', claseId)
-        .eq('tipo', 'previo')
-        .maybeSingle();
-
-      if (quizError) throw quizError;
-
-      if (!quiz) {
-        toast({
-          title: 'No hay quiz PRE',
-          description: 'Esta clase no tiene quiz PRE generado',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // If quiz is published, close it; otherwise, publish it
-      if (quiz.estado === 'publicado') {
-        await closeQuiz.mutateAsync(quiz.id);
-        toast({
-          title: 'Quiz PRE finalizado',
-          description: 'El quiz PRE ha sido cerrado'
-        });
-      } else {
-        const fechaDisponible = new Date();
-        const fechaLimite = new Date();
-        fechaLimite.setDate(fechaLimite.getDate() + 7); // 7 días para responder
-
-        await publishQuiz.mutateAsync(quiz.id);
-        
-        await supabase
-          .from('quizzes')
-          .update({
-            fecha_disponible: fechaDisponible.toISOString(),
-            fecha_limite: fechaLimite.toISOString()
-          })
-          .eq('id', quiz.id);
-
-        toast({
-          title: 'Quiz PRE activado',
-          description: 'Los estudiantes pueden responder el quiz PRE ahora'
-        });
-      }
-      
-      // Refresh quizzes map
-      const { data: updatedQuiz } = await supabase
-        .from('quizzes')
-        .select('id, id_clase, tipo, estado')
-        .eq('id_clase', claseId)
-        .eq('tipo', 'previo')
-        .maybeSingle();
-      
-      if (updatedQuiz) {
-        setQuizzesMap(prev => ({
-          ...prev,
-          [claseId]: {
-            ...prev[claseId],
-            previo: updatedQuiz.estado
-          }
-        }));
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error al procesar el quiz PRE: ' + error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setActivatingQuiz(null);
-    }
-  };
-
-  // Handler to activate/finalize POST quiz
-  const handleActivarQuizPost = async (claseId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setActivatingQuiz({ claseId, tipo: 'post' });
-    try {
-      // Get POST quiz for this class
-      const { data: quiz, error: quizError } = await supabase
-        .from('quizzes')
-        .select('id, estado')
-        .eq('id_clase', claseId)
-        .eq('tipo', 'post')
-        .maybeSingle();
-
-      if (quizError) throw quizError;
-
-      if (!quiz) {
-        toast({
-          title: 'No hay quiz POST',
-          description: 'Esta clase no tiene quiz POST generado',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // If quiz is published, close it; otherwise, publish it
-      if (quiz.estado === 'publicado') {
-        await closeQuiz.mutateAsync(quiz.id);
-        toast({
-          title: 'Quiz POST finalizado',
-          description: 'El quiz POST ha sido cerrado'
-        });
-      } else {
-        const fechaDisponible = new Date();
-        const fechaLimite = new Date();
-        fechaLimite.setDate(fechaLimite.getDate() + 7); // 7 días para responder
-
-        await publishQuiz.mutateAsync(quiz.id);
-        
-        await supabase
-          .from('quizzes')
-          .update({
-            fecha_disponible: fechaDisponible.toISOString(),
-            fecha_limite: fechaLimite.toISOString()
-          })
-          .eq('id', quiz.id);
-
-        toast({
-          title: 'Quiz POST activado',
-          description: 'Los estudiantes pueden responder el quiz POST ahora'
-        });
-      }
-      
-      // Refresh quizzes map
-      const { data: updatedQuiz } = await supabase
-        .from('quizzes')
-        .select('id, id_clase, tipo, estado')
-        .eq('id_clase', claseId)
-        .eq('tipo', 'post')
-        .maybeSingle();
-      
-      if (updatedQuiz) {
-        setQuizzesMap(prev => ({
-          ...prev,
-          [claseId]: {
-            ...prev[claseId],
-            post: updatedQuiz.estado
-          }
-        }));
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error al procesar el quiz POST: ' + error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setActivatingQuiz(null);
-    }
-  };
-
   // Handler to view guide in modal
   const handleVerGuia = async (clase: { id: string; id_guia_version_actual?: string | null; tema?: { nombre?: string } | null; duracion_minutos?: number | null }, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -504,8 +281,6 @@ export default function ProfesorDashboard() {
                           <div className="mt-2">
                             <EstadoClase
                               tieneGuia={!!clase.guia_version || !!clase.id_guia_version_actual}
-                              tienePreQuiz={!!quizzesMap[clase.id]?.previo}
-                              tienePostQuiz={!!quizzesMap[clase.id]?.post}
                             />
                           </div>
                         </div>
@@ -541,8 +316,6 @@ export default function ProfesorDashboard() {
                               <div className="mt-2">
                                 <EstadoClase
                                   tieneGuia={!!clase.guia_version || !!clase.id_guia_version_actual}
-                                  tienePreQuiz={!!quizzesMap[clase.id]?.previo}
-                                  tienePostQuiz={!!quizzesMap[clase.id]?.post}
                                 />
                               </div>
                             </div>
@@ -558,52 +331,6 @@ export default function ProfesorDashboard() {
                                 Ver guía
                               </Button>
                             )}
-                            <Button 
-                              variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPre(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.previo === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.previo === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar PRE
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar PRE
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant={quizzesMap[clase.id]?.post === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPost(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.post === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.post === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar POST
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar POST
-                                </>
-                              )}
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -633,8 +360,6 @@ export default function ProfesorDashboard() {
                               <div className="mt-2">
                                 <EstadoClase
                                   tieneGuia={!!clase.guia_version || !!clase.id_guia_version_actual}
-                                  tienePreQuiz={!!quizzesMap[clase.id]?.previo}
-                                  tienePostQuiz={!!quizzesMap[clase.id]?.post}
                                 />
                               </div>
                             </div>
@@ -650,52 +375,6 @@ export default function ProfesorDashboard() {
                                 Ver guía
                               </Button>
                             )}
-                            <Button 
-                              variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPre(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.previo === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.previo === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar PRE
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar PRE
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant={quizzesMap[clase.id]?.post === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPost(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.post === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.post === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar POST
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar POST
-                                </>
-                              )}
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -736,52 +415,6 @@ export default function ProfesorDashboard() {
                                 Ver guía
                               </Button>
                             )}
-                            <Button 
-                              variant={quizzesMap[clase.id]?.previo === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPre(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'previo' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.previo === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.previo === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar PRE
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar PRE
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant={quizzesMap[clase.id]?.post === 'publicado' ? 'secondary' : 'default'}
-                              size="sm"
-                              onClick={(e) => handleActivarQuizPost(clase.id, e)}
-                              disabled={activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post'}
-                            >
-                              {activatingQuiz?.claseId === clase.id && activatingQuiz?.tipo === 'post' ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  {quizzesMap[clase.id]?.post === 'publicado' ? 'Finalizando...' : 'Activando...'}
-                                </>
-                              ) : quizzesMap[clase.id]?.post === 'publicado' ? (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Finalizar POST
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  Empezar POST
-                                </>
-                              )}
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -801,49 +434,8 @@ export default function ProfesorDashboard() {
           </Tabs>
         </div>
 
-        {/* Recommendations sidebar */}
+        {/* Sidebar */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-warning" />
-                Recomendaciones IA
-              </CardTitle>
-              <CardDescription>
-                Sugerencias basadas en el análisis de tus clases
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recomendaciones.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay recomendaciones disponibles
-                </p>
-              ) : (
-                <>
-                  {recomendaciones.slice(0, 3).map((rec) => (
-                    <div 
-                      key={rec.id}
-                      className="p-3 rounded-lg bg-muted/50 border border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-start gap-2 mb-1">
-                        <Badge variant={rec.tipo === 'refuerzo' ? 'destructive' : 'secondary'} className="text-xs">
-                          {rec.tipo}
-                        </Badge>
-                      </div>
-                      <h4 className="font-medium text-sm mb-1">{rec.titulo}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{rec.descripcion}</p>
-                    </div>
-                  ))}
-                  {recomendaciones.length > 3 && (
-                    <Button variant="ghost" className="w-full text-sm">
-                      Ver todas las recomendaciones ({recomendaciones.length})
-                    </Button>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Quick actions */}
           <Card>
             <CardHeader>

@@ -539,10 +539,6 @@ export default function TemaDetalle() {
                                       Ver
                                     </Button>
                                     <Button size="sm" variant="ghost">
-                                      <FileText className="w-3 h-3 mr-1" />
-                                      Quizzes
-                                    </Button>
-                                    <Button size="sm" variant="ghost">
                                       <MessageSquare className="w-3 h-3 mr-1" />
                                       Retroalimentación
                                     </Button>

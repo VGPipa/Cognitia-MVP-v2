@@ -10,10 +10,7 @@ import {
   TrendingUp,
   AlertTriangle,
   Target,
-  ChevronDown,
-  Lightbulb,
   BookOpen,
-  ClipboardList,
   CheckCircle
 } from 'lucide-react';
 import {
@@ -24,9 +21,6 @@ import {
   useTemasMateria,
   useClasesTema,
   useResumenSalon,
-  useMetricasPRE,
-  useMetricasPOST,
-  useRecomendacionesIA,
   type AsignacionConMetricas
 } from '@/hooks/useMisSalones';
 
@@ -60,12 +54,6 @@ export default function MisSalones() {
 
   // Métricas
   const { data: resumen, isLoading: isLoadingResumen } = useResumenSalon(selectedAsignacion?.grupo.id || null, filtros);
-  const { data: metricasPre, isLoading: isLoadingPre } = useMetricasPRE(selectedAsignacion?.grupo.id || null, filtros);
-  const { data: metricasPost, isLoading: isLoadingPost } = useMetricasPOST(selectedAsignacion?.grupo.id || null, filtros);
-  
-  // Recomendaciones generadas por IA
-  const { recomendacion: recomendacionPre } = useRecomendacionesIA(metricasPre?.conceptosRefuerzo || [], 'PRE');
-  const { recomendacion: recomendacionPost } = useRecomendacionesIA(metricasPre?.conceptosRefuerzo || [], 'POST');
 
   // Reset filtros cuando selecciona una asignación
   const handleAsignacionSelect = (asignacion: AsignacionConMetricas) => {
@@ -144,24 +132,7 @@ export default function MisSalones() {
                 </CardContent>
               </Card>
 
-              {/* Card 3: Quizzes completados */}
-              <Card className="border shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Quizzes completados</p>
-                      <p className="text-3xl font-bold mt-2">
-                        {metricasGlobales?.quizzesCompletados || 0}
-                      </p>
-                    </div>
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <ClipboardList className="w-5 h-5 text-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Card 4: Participación */}
+              {/* Card 3: Participación */}
               <Card className="border shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
@@ -238,12 +209,8 @@ export default function MisSalones() {
                     />
                   </div>
 
-                  {/* Fila de Quizzes y Participación */}
-                  <div className="grid grid-cols-2 gap-4 pt-3 border-t">
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground mb-1">Quizzes</p>
-                      <p className="text-xl font-bold text-foreground">{asignacion.totalQuizzes}</p>
-                    </div>
+                  {/* Participación */}
+                  <div className="pt-3 border-t">
                     <div className="bg-muted/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground mb-1">Participación</p>
                       <p className="text-xl font-bold text-foreground">{asignacion.asistencia}%</p>
@@ -371,7 +338,7 @@ export default function MisSalones() {
                     <span className="text-sm text-muted-foreground">Participación</span>
                   </div>
                   <p className="text-3xl font-bold">{resumen?.participacion || 0}%</p>
-                  <p className="text-xs text-muted-foreground mt-1">Alumnos que completan quizzes</p>
+                  <p className="text-xs text-muted-foreground mt-1">Alumnos que participan</p>
                 </CardContent>
               </Card>
 
@@ -401,209 +368,6 @@ export default function MisSalones() {
         </div>
       </div>
 
-      {/* Evaluación Inicial (PRE) */}
-      <div>
-        <h2 className="text-lg font-semibold mb-1">Evaluación Inicial (PRE)</h2>
-        <p className="text-sm text-muted-foreground mb-4">Conocimientos antes de la clase</p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Participación PRE */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="font-medium">Participación</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">Porcentaje de completación</p>
-              {isLoadingPre ? (
-                <Skeleton className="h-2 w-full" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Progress 
-                    value={metricasPre?.participacion || 0} 
-                    className="h-3 flex-[2] [&>div]:bg-primary" 
-                  />
-                  <span className="text-sm font-medium w-12 text-right">{metricasPre?.participacion || 0}%</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Nivel de Preparación PRE */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-4 h-4 text-primary" />
-                <span className="font-medium">Nivel de Preparación</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">Porcentaje de aciertos promedio</p>
-              {isLoadingPre ? (
-                <Skeleton className="h-2 w-full" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Progress 
-                    value={metricasPre?.nivelPreparacion || 0} 
-                    className="h-3 flex-[2] [&>div]:bg-primary" 
-                  />
-                  <span className="text-sm font-medium w-12 text-right">{metricasPre?.nivelPreparacion || 0}%</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Conceptos que necesitan refuerzo PRE */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">Conceptos que necesitan refuerzo</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">Ranking de conceptos que requieren más atención</p>
-              {isLoadingPre ? (
-                <Skeleton className="h-16" />
-              ) : metricasPre?.conceptosRefuerzo && metricasPre.conceptosRefuerzo.length > 0 ? (
-                <div className="space-y-2">
-                  {metricasPre.conceptosRefuerzo.slice(0, 3).map((concepto, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <span className="text-sm font-medium">{concepto.nombre}</span>
-                        <p className="text-xs text-muted-foreground">{concepto.porcentajeAcierto}% de acierto</p>
-                      </div>
-                      <Badge className="bg-primary hover:bg-primary/90">{concepto.porcentajeAcierto}%</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-                  Sin conceptos identificados
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recomendaciones PRE */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-4 h-4 text-primary" />
-                <span className="font-medium">Recomendaciones</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">Acciones sugeridas para preparar la clase</p>
-              {recomendacionPre ? (
-                <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
-                  <p className="text-sm font-medium mb-1">{recomendacionPre.titulo}</p>
-                  <p className="text-sm text-muted-foreground">{recomendacionPre.descripcion}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-                  Sin recomendaciones disponibles
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Logro de la Clase (POST) */}
-      <div>
-        <h2 className="text-lg font-semibold mb-1">Logro de la Clase (POST)</h2>
-        <p className="text-sm text-muted-foreground mb-4">Conocimientos después de la clase</p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Participación POST */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="font-medium">Participación</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">Porcentaje de completación</p>
-              {isLoadingPost ? (
-                <Skeleton className="h-2 w-full" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Progress 
-                    value={metricasPost?.participacion || 0} 
-                    className="h-3 flex-[2] [&>div]:bg-primary" 
-                  />
-                  <span className="text-sm font-medium w-12 text-right">{metricasPost?.participacion || 0}%</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Nivel de Desempeño POST */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="font-medium">Nivel de Desempeño</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">Promedio de logro</p>
-              {isLoadingPost ? (
-                <Skeleton className="h-2 w-full" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Progress 
-                    value={metricasPost?.nivelDesempeno || 0} 
-                    className="h-3 flex-[2] [&>div]:bg-primary" 
-                  />
-                  <span className="text-sm font-medium w-12 text-right">{metricasPost?.nivelDesempeno || 0}%</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Alumnos que requieren refuerzo POST */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-primary" />
-                <span className="font-medium">Alumnos que requieren refuerzo</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">Alumnos con bajo desempeño</p>
-              {isLoadingPost ? (
-                <Skeleton className="h-16" />
-              ) : metricasPost?.alumnosRefuerzo && metricasPost.alumnosRefuerzo.length > 0 ? (
-                <div className="space-y-2">
-                  {metricasPost.alumnosRefuerzo.slice(0, 3).map((alumno) => (
-                    <div key={alumno.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm font-medium">{alumno.nombre}</span>
-                      <Badge className="bg-primary hover:bg-primary/90">{alumno.porcentaje}%</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-                  No hay alumnos que requieran refuerzo
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recomendaciones POST */}
-          <Card className="border shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-4 h-4 text-primary" />
-                <span className="font-medium">Recomendaciones</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">Acciones sugeridas después de la clase</p>
-              {recomendacionPost ? (
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <Badge className="bg-primary hover:bg-primary/90 mb-2">Refuerzo</Badge>
-                  <p className="text-sm font-medium mb-1">{recomendacionPost.titulo}</p>
-                  <p className="text-sm text-muted-foreground">{recomendacionPost.descripcion}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-                  Sin recomendaciones disponibles
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 }

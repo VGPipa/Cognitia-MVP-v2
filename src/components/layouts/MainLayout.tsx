@@ -36,7 +36,6 @@ const NAVIGATION: Record<AppRole, Array<{ to: string; icon: typeof LayoutDashboa
   ],
   alumno: [
     { to: '/alumno/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/alumno/evaluaciones', icon: ClipboardList, label: 'Evaluaciones' },
     { to: '/alumno/progreso', icon: BarChart3, label: 'Mi Progreso' }
   ],
   apoderado: [

@@ -26,9 +26,9 @@ const MOCK_CURSOS = [
 ];
 
 const MOCK_LOGROS = [
-  { nombre: 'Primera Evaluación', descripcion: 'Completaste tu primer quiz', fecha: '2024-01-05', icono: '🎯' },
+  { nombre: 'Primera Actividad', descripcion: 'Completaste tu primera actividad', fecha: '2024-01-05', icono: '🎯' },
   { nombre: 'Racha de 5 días', descripcion: 'Estudiaste 5 días consecutivos', fecha: '2024-01-18', icono: '🔥' },
-  { nombre: 'Promedio Alto', descripcion: 'Obtuviste más de 90% en un quiz', fecha: '2024-01-15', icono: '⭐' },
+  { nombre: 'Promedio Alto', descripcion: 'Obtuviste más de 90% en una evaluación', fecha: '2024-01-15', icono: '⭐' },
   { nombre: 'Top 10', descripcion: 'Estás en el top 10 de tu clase', fecha: '2024-01-12', icono: '🏆' }
 ];
 

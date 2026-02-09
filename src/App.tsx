@@ -27,17 +27,11 @@ import ProfesorDashboard from "./pages/profesor/ProfesorDashboard";
 import Planificacion from "./pages/profesor/Planificacion";
 import TemaDetalle from "./pages/profesor/TemaDetalle";
 import GenerarClase from "./pages/profesor/GenerarClase";
-import PreClase from "./pages/profesor/PreClase";
-import PostClase from "./pages/profesor/PostClase";
 import MisSalones from "./pages/profesor/MisSalones";
-
 
 // Alumno pages
 import AlumnoDashboard from "./pages/alumno/AlumnoDashboard";
-import Evaluaciones from "./pages/alumno/Evaluaciones";
 import Progreso from "./pages/alumno/Progreso";
-import ResolverQuiz from "./pages/alumno/ResolverQuiz";
-import ResultadoQuiz from "./pages/alumno/ResultadoQuiz";
 
 // Apoderado pages
 import ApoderadoDashboard from "./pages/apoderado/ApoderadoDashboard";
@@ -112,17 +106,11 @@ function AppRoutes() {
         <Route path="/profesor/planificacion" element={<Planificacion />} />
         <Route path="/profesor/planificacion/tema/:temaId" element={<TemaDetalle />} />
         <Route path="/profesor/generar-clase" element={<GenerarClase />} />
-        <Route path="/profesor/pre-clase" element={<PreClase />} />
-        <Route path="/profesor/post-clase" element={<PostClase />} />
         <Route path="/profesor/mis-salones" element={<MisSalones />} />
-        
         
         {/* Alumno routes */}
         <Route path="/alumno/dashboard" element={<AlumnoDashboard />} />
-        <Route path="/alumno/evaluaciones" element={<Evaluaciones />} />
         <Route path="/alumno/progreso" element={<Progreso />} />
-        <Route path="/alumno/quiz/:quizId" element={<ResolverQuiz />} />
-        <Route path="/alumno/quiz/:quizId/resultado" element={<ResultadoQuiz />} />
         
         {/* Apoderado routes */}
         <Route path="/apoderado/dashboard" element={<ApoderadoDashboard />} />
