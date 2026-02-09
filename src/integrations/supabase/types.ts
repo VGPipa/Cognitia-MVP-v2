@@ -743,54 +743,6 @@ export type Database = {
         }
         Relationships: []
       }
-      nota_alumno: {
-        Row: {
-          created_at: string
-          estado: Database["public"]["Enums"]["estado_respuesta"] | null
-          fecha_envio: string | null
-          fecha_inicio: string | null
-          id: string
-          id_alumno: string
-          id_quiz: string
-          puntaje_total: number | null
-        }
-        Insert: {
-          created_at?: string
-          estado?: Database["public"]["Enums"]["estado_respuesta"] | null
-          fecha_envio?: string | null
-          fecha_inicio?: string | null
-          id?: string
-          id_alumno: string
-          id_quiz: string
-          puntaje_total?: number | null
-        }
-        Update: {
-          created_at?: string
-          estado?: Database["public"]["Enums"]["estado_respuesta"] | null
-          fecha_envio?: string | null
-          fecha_inicio?: string | null
-          id?: string
-          id_alumno?: string
-          id_quiz?: string
-          puntaje_total?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nota_alumno_id_alumno_fkey"
-            columns: ["id_alumno"]
-            isOneToOne: false
-            referencedRelation: "alumnos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nota_alumno_id_quiz_fkey"
-            columns: ["id_quiz"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       periodos_academicos: {
         Row: {
           activo: boolean | null
@@ -876,56 +828,6 @@ export type Database = {
           },
         ]
       }
-      preguntas: {
-        Row: {
-          concepto: string | null
-          created_at: string
-          feedback_acierto: string | null
-          id: string
-          id_quiz: string
-          justificacion: string | null
-          opciones: Json | null
-          orden: number | null
-          respuesta_correcta: string | null
-          texto_pregunta: string
-          tipo: Database["public"]["Enums"]["tipo_pregunta"] | null
-        }
-        Insert: {
-          concepto?: string | null
-          created_at?: string
-          feedback_acierto?: string | null
-          id?: string
-          id_quiz: string
-          justificacion?: string | null
-          opciones?: Json | null
-          orden?: number | null
-          respuesta_correcta?: string | null
-          texto_pregunta: string
-          tipo?: Database["public"]["Enums"]["tipo_pregunta"] | null
-        }
-        Update: {
-          concepto?: string | null
-          created_at?: string
-          feedback_acierto?: string | null
-          id?: string
-          id_quiz?: string
-          justificacion?: string | null
-          opciones?: Json | null
-          orden?: number | null
-          respuesta_correcta?: string | null
-          texto_pregunta?: string
-          tipo?: Database["public"]["Enums"]["tipo_pregunta"] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "preguntas_id_quiz_fkey"
-            columns: ["id_quiz"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profesores: {
         Row: {
           activo: boolean | null
@@ -990,145 +892,6 @@ export type Database = {
             columns: ["id_institucion"]
             isOneToOne: false
             referencedRelation: "instituciones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quizzes: {
-        Row: {
-          created_at: string
-          estado: Database["public"]["Enums"]["estado_quiz"] | null
-          estimulo_aprendizaje: Json | null
-          fecha_disponible: string | null
-          fecha_limite: string | null
-          id: string
-          id_clase: string
-          instrucciones: string | null
-          tiempo_limite: number | null
-          tipo: Database["public"]["Enums"]["tipo_quiz"]
-          titulo: string
-        }
-        Insert: {
-          created_at?: string
-          estado?: Database["public"]["Enums"]["estado_quiz"] | null
-          estimulo_aprendizaje?: Json | null
-          fecha_disponible?: string | null
-          fecha_limite?: string | null
-          id?: string
-          id_clase: string
-          instrucciones?: string | null
-          tiempo_limite?: number | null
-          tipo: Database["public"]["Enums"]["tipo_quiz"]
-          titulo: string
-        }
-        Update: {
-          created_at?: string
-          estado?: Database["public"]["Enums"]["estado_quiz"] | null
-          estimulo_aprendizaje?: Json | null
-          fecha_disponible?: string | null
-          fecha_limite?: string | null
-          id?: string
-          id_clase?: string
-          instrucciones?: string | null
-          tiempo_limite?: number | null
-          tipo?: Database["public"]["Enums"]["tipo_quiz"]
-          titulo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quizzes_id_clase_fkey"
-            columns: ["id_clase"]
-            isOneToOne: false
-            referencedRelation: "clases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      recomendaciones: {
-        Row: {
-          analisis_general: Json | null
-          concepto_relacionado: string | null
-          contenido: string | null
-          created_at: string
-          id: string
-          id_quiz: string
-          momento: string | null
-          prioridad: string | null
-          tipo: string | null
-          titulo: string | null
-        }
-        Insert: {
-          analisis_general?: Json | null
-          concepto_relacionado?: string | null
-          contenido?: string | null
-          created_at?: string
-          id?: string
-          id_quiz: string
-          momento?: string | null
-          prioridad?: string | null
-          tipo?: string | null
-          titulo?: string | null
-        }
-        Update: {
-          analisis_general?: Json | null
-          concepto_relacionado?: string | null
-          contenido?: string | null
-          created_at?: string
-          id?: string
-          id_quiz?: string
-          momento?: string | null
-          prioridad?: string | null
-          tipo?: string | null
-          titulo?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recomendaciones_id_quiz_fkey"
-            columns: ["id_quiz"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      respuestas_detalle: {
-        Row: {
-          es_correcta: boolean | null
-          id: string
-          id_nota_alumno: string
-          id_pregunta: string
-          respuesta_alumno: string | null
-          tiempo_segundos: number | null
-        }
-        Insert: {
-          es_correcta?: boolean | null
-          id?: string
-          id_nota_alumno: string
-          id_pregunta: string
-          respuesta_alumno?: string | null
-          tiempo_segundos?: number | null
-        }
-        Update: {
-          es_correcta?: boolean | null
-          id?: string
-          id_nota_alumno?: string
-          id_pregunta?: string
-          respuesta_alumno?: string | null
-          tiempo_segundos?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "respuestas_detalle_id_nota_alumno_fkey"
-            columns: ["id_nota_alumno"]
-            isOneToOne: false
-            referencedRelation: "nota_alumno"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "respuestas_detalle_id_pregunta_fkey"
-            columns: ["id_pregunta"]
-            isOneToOne: false
-            referencedRelation: "preguntas"
             referencedColumns: ["id"]
           },
         ]
@@ -1277,12 +1040,8 @@ export type Database = {
         | "en_clase"
         | "completada"
         | "analizando_resultados"
-      estado_quiz: "borrador" | "publicado" | "cerrado"
-      estado_respuesta: "en_progreso" | "completado"
       plan_estado: "activo" | "borrador" | "pendiente"
       relacion_apoderado: "padre" | "madre" | "tutor"
-      tipo_pregunta: "opcion_multiple" | "verdadero_falso" | "respuesta_corta"
-      tipo_quiz: "previo" | "post"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1421,12 +1180,8 @@ export const Constants = {
         "completada",
         "analizando_resultados",
       ],
-      estado_quiz: ["borrador", "publicado", "cerrado"],
-      estado_respuesta: ["en_progreso", "completado"],
       plan_estado: ["activo", "borrador", "pendiente"],
       relacion_apoderado: ["padre", "madre", "tutor"],
-      tipo_pregunta: ["opcion_multiple", "verdadero_falso", "respuesta_corta"],
-      tipo_quiz: ["previo", "post"],
     },
   },
 } as const
