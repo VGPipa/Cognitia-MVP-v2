@@ -1,27 +1,84 @@
 
 
-## Apply Migration: `20260209210000_generation_flow_hardening`
+## Fix: Error RLS en tabla `clases` para profesores sin asignaciones
 
-This migration file already exists in the repository. It needs to be applied to the database. No application code will be modified.
+### Problema detectado
 
-### What the migration does
+La politica RLS "Profesores can manage own clases" exige que el profesor tenga una fila en `asignaciones_profesor` que coincida con el grupo (y opcionalmente tema) de la clase. **7 profesores tienen 0 asignaciones**, por lo que toda insercion es bloqueada:
 
-1. **Adds `tema_personalizado` column** to the `clases` table (text, nullable) to support extraordinary/custom class topics.
+| Profesor | Asignaciones |
+|----------|-------------|
+| jespinoza@gmail.com | 0 |
+| emprelatam@gmail.com | 0 |
+| docente@gmail.com | 0 |
+| mrodriguez@gmail.com | 0 |
+| rvargas@gmail.com | 0 |
+| rcaceres@gmail.com | 0 |
+| lramirez@gmail.com | 0 |
 
-2. **Creates performance indexes** on:
-   - `clases (id_profesor, id_tema, estado, fecha_programada)`
-   - `asignaciones_profesor (id_profesor, id_grupo, id_materia)`
-   - `guias_tema (id_profesor, id_tema)`
+### Solucion (2 partes, solo DB, sin cambios frontend)
 
-3. **De-duplicates `guias_tema`** rows by `(id_profesor, id_tema)`, keeping the latest, then enforces a unique constraint.
+#### Parte 1 -- Crear asignaciones para jespinoza
 
-4. **Replaces permissive `USING(true)` SELECT policies** on `clases`, `guias_tema`, and `guias_clase_versiones` with scoped role-based policies:
-   - Admins can read all rows.
-   - Profesores can only read their own rows (via `profesores.user_id`).
+Insertar asignaciones de Comunicacion y Matematica para 3 Secundaria A (como ejemplo razonable). Se puede ajustar despues desde el panel de admin.
 
-5. **Strengthens the teacher write policy** on `clases` to verify the professor has a valid assignment (`asignaciones_profesor`) for the group/topic combination.
+```sql
+INSERT INTO asignaciones_profesor (id_profesor, id_materia, id_grupo, anio_escolar)
+VALUES
+  ('56a2004b-8abc-4b68-aa2e-748c74fedc5e', '33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111102', '2025'),
+  ('56a2004b-8abc-4b68-aa2e-748c74fedc5e', '33333333-3333-3333-3333-333333333305', '11111111-1111-1111-1111-111111111102', '2025');
+```
 
-### Execution
+#### Parte 2 -- Relajar la politica RLS para clases extraordinarias
 
-The migration tool will be used to apply the exact SQL from the file. No frontend or TypeScript files will be touched.
+Reemplazar la politica "Profesores can manage own clases" para permitir dos caminos:
 
+1. **Clase con tema del plan** (id_tema IS NOT NULL): requiere asignacion en `asignaciones_profesor` (como ahora).
+2. **Clase extraordinaria** (id_tema IS NULL y tema_personalizado IS NOT NULL): solo requiere que el profesor pertenezca a la misma institucion que el grupo, sin necesidad de asignacion formal.
+
+```text
+Migration SQL (esquema simplificado):
+
+DROP POLICY "Profesores can manage own clases" ON clases;
+
+CREATE POLICY "Profesores can manage own clases" ON clases
+FOR ALL TO authenticated
+USING (
+  id_profesor IN (SELECT p.id FROM profesores p WHERE p.user_id = auth.uid())
+  AND (
+    -- Path A: clase con tema del plan -> requiere asignacion
+    (id_tema IS NOT NULL AND EXISTS (
+      SELECT 1 FROM temas_plan tp
+      JOIN asignaciones_profesor ap ON ap.id_materia = tp.curso_plan_id
+      WHERE tp.id = clases.id_tema
+        AND ap.id_profesor = clases.id_profesor
+        AND ap.id_grupo = clases.id_grupo
+    ))
+    OR
+    -- Path B: clase extraordinaria -> solo verificar mismo institucion
+    (id_tema IS NULL AND tema_personalizado IS NOT NULL AND EXISTS (
+      SELECT 1 FROM grupos g
+      WHERE g.id = clases.id_grupo
+        AND g.id_institucion = get_user_institucion(auth.uid())
+    ))
+    OR
+    -- Path C: clase sin tema asignada a grupo con asignacion (borrador)
+    (id_tema IS NULL AND tema_personalizado IS NULL AND EXISTS (
+      SELECT 1 FROM asignaciones_profesor ap
+      WHERE ap.id_profesor = clases.id_profesor
+        AND ap.id_grupo = clases.id_grupo
+    ))
+  )
+)
+WITH CHECK ( /* misma logica */ );
+```
+
+### Resultado esperado
+
+- jespinoza podra crear clases extraordinarias en cualquier grupo de su institucion
+- Profesores con asignaciones seguiran creando clases normales vinculadas al plan
+- La seguridad se mantiene: un profesor no puede operar sobre grupos de otra institucion
+
+### Archivos modificados
+
+Ninguno. Solo cambios en la base de datos (1 data insert + 1 migration).
