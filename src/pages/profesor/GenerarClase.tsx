@@ -700,15 +700,29 @@ export default function GenerarClase() {
       throw new Error('Faltan datos necesarios para crear la clase (nivel y grado)');
     }
 
-    // For extraordinary sessions, an assigned group must be explicitly selected.
-    const groupToUse = grupoData;
+    let groupToUse = grupoData;
 
-    if (!groupToUse) {
-      throw new Error('Selecciona un grupo asignado antes de continuar.');
+    // For extraordinary classes, auto-lookup the group by nivel/grado/seccion
+    if (isExtraordinaria && !groupToUse) {
+      const gradoBuscado = `${formData.grado} ${formData.nivel}`;
+      const { data: grupoEncontrado } = await supabase
+        .from('grupos')
+        .select('id, nombre, grado, seccion')
+        .ilike('grado', `%${formData.grado}%${formData.nivel}%`)
+        .eq('seccion', formData.seccion || '')
+        .limit(1)
+        .maybeSingle();
+
+      if (grupoEncontrado) {
+        groupToUse = grupoEncontrado;
+        setGrupoData(grupoEncontrado);
+      } else {
+        throw new Error(`No se encontró un grupo para ${formData.grado}° ${formData.nivel} sección ${formData.seccion}. Contacta al administrador.`);
+      }
     }
 
-    if (isExtraordinaria && !grupos.some(g => g?.id === groupToUse.id)) {
-      throw new Error('Solo puedes crear clases extraordinarias en grupos que tienes asignados.');
+    if (!groupToUse) {
+      throw new Error('Selecciona un grupo antes de continuar.');
     }
 
     // Para clases extraordinarias, id_tema puede ser null
@@ -924,15 +938,6 @@ export default function GenerarClase() {
       return;
     }
 
-    if (isExtraordinaria && !grupoData?.id) {
-      toast({
-        title: 'Error',
-        description: 'Selecciona un grupo asignado antes de continuar',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     setIsGenerating(true);
     let claseIdEnProceso: string | null = claseData?.id || null;
     try {
@@ -1074,11 +1079,7 @@ export default function GenerarClase() {
 
   // Validation helper using utility function
   const getMissingFields = () => {
-    const missing = getMissingFieldsUtil(formData, isExtraordinaria, temaData, grupoData);
-    if (isExtraordinaria && !grupoData?.id) {
-      missing.push('Grupo asignado');
-    }
-    return missing;
+    return getMissingFieldsUtil(formData, isExtraordinaria, temaData, grupoData);
   };
 
   const canProceed = () => {
@@ -1516,45 +1517,6 @@ export default function GenerarClase() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {/* Grupo asignado (solo extraordinaria) */}
-                    {isExtraordinaria && (
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Grupo asignado *</Label>
-                        <Select
-                          value={grupoData?.id}
-                          onValueChange={(value) => {
-                            const selected = grupos.find(g => g?.id === value);
-                            if (!selected) return;
-                            setGrupoData(selected);
-                            const parsed = parseGradoFromGrupo(selected);
-                            setFormData(prev => ({
-                              ...prev,
-                              nivel: (parsed.nivel as NivelEducativo) || prev.nivel,
-                              grado: parsed.gradoNum || prev.grado,
-                              seccion: selected.seccion || ''
-                            }));
-                          }}
-                          disabled={isClaseCompletada}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona uno de tus grupos asignados" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {gruposDisponibles.map((grupo) => (
-                              <SelectItem key={grupo.id} value={grupo.id}>
-                                {grupo.nombre}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {!grupoData?.id && (
-                          <p className="text-xs text-amber-700">
-                            Debes elegir un grupo asignado para generar una clase extraordinaria.
-                          </p>
-                        )}
-                      </div>
-                    )}
 
                     {/* Fecha */}
                     <div className="space-y-2">
