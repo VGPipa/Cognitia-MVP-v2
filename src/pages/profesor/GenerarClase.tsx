@@ -720,13 +720,24 @@ export default function GenerarClase() {
         grupoQuery = grupoQuery.eq('seccion', formData.seccion);
       }
 
-      const { data: grupoEncontrado } = await grupoQuery.limit(1).maybeSingle();
+      let { data: grupoEncontrado } = await grupoQuery.limit(1).maybeSingle();
+
+      // Fallback: si no encuentra con sección exacta, buscar solo por grado
+      if (!grupoEncontrado && formData.seccion) {
+        const { data: grupoFallback } = await supabase
+          .from('grupos')
+          .select('id, nombre, grado, seccion')
+          .eq('grado', gradoBuscado)
+          .limit(1)
+          .maybeSingle();
+        grupoEncontrado = grupoFallback;
+      }
 
       if (grupoEncontrado) {
         groupToUse = grupoEncontrado;
         setGrupoData(grupoEncontrado);
       } else {
-        throw new Error(`No se encontró un grupo para ${formData.grado}° ${formData.nivel} sección ${formData.seccion}. Contacta al administrador.`);
+        throw new Error(`No se encontró un grupo para ${gradoBuscado}. Contacta al administrador.`);
       }
     }
 
