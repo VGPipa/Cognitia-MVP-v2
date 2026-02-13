@@ -704,14 +704,23 @@ export default function GenerarClase() {
 
     // For extraordinary classes, auto-lookup the group by nivel/grado/seccion
     if (isExtraordinaria && !groupToUse) {
-      const gradoBuscado = `${formData.grado} ${formData.nivel}`;
-      const { data: grupoEncontrado } = await supabase
+      let gradoBuscado: string;
+      if (formData.nivel === 'Inicial') {
+        gradoBuscado = `${formData.grado} años`;
+      } else {
+        gradoBuscado = `${formData.grado}° ${formData.nivel}`;
+      }
+
+      let grupoQuery = supabase
         .from('grupos')
         .select('id, nombre, grado, seccion')
-        .ilike('grado', `%${formData.grado}%${formData.nivel}%`)
-        .eq('seccion', formData.seccion || '')
-        .limit(1)
-        .maybeSingle();
+        .eq('grado', gradoBuscado);
+
+      if (formData.seccion) {
+        grupoQuery = grupoQuery.eq('seccion', formData.seccion);
+      }
+
+      const { data: grupoEncontrado } = await grupoQuery.limit(1).maybeSingle();
 
       if (grupoEncontrado) {
         groupToUse = grupoEncontrado;
