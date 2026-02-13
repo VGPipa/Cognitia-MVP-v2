@@ -1,50 +1,47 @@
 
 
-## Fix: Busqueda de grupo falla cuando seccion esta vacia
+## Fix: Fallback cuando no existe grupo con la seccion exacta
 
 ### Problema
 
-El error "No se encontro un grupo para 3 Primaria seccion ." ocurre porque:
-- La seccion se dejo como "Opcional" (valor vacio)
-- Todos los grupos en la DB tienen seccion "A"
-- La query filtra con `.eq('seccion', '')` que no encuentra nada
+La base de datos solo tiene grupos con seccion "A" para todos los grados. Cuando el profesor selecciona una seccion diferente (ej: "D"), la busqueda falla porque no existe "4 Secundaria seccion D".
 
-### Cambio en `src/pages/profesor/GenerarClase.tsx` (lineas 706-721)
+### Solucion en `src/pages/profesor/GenerarClase.tsx` (lineas 706-730)
 
-Modificar la logica de busqueda del grupo en `ensureClase`:
-
-1. Construir el valor de grado esperado como `${formData.grado}° ${formData.nivel}` (ej: "3° Primaria") para hacer un match exacto con el campo `grado` de la tabla `grupos`
-2. Si `formData.seccion` tiene valor, filtrar por seccion. Si esta vacio, no filtrar por seccion y tomar el primer resultado disponible
+Agregar un fallback: si la busqueda con seccion exacta no encuentra resultado, hacer una segunda busqueda solo por grado (sin filtrar seccion). Asi siempre se encuentra un grupo valido.
 
 ```text
-// Antes (falla con seccion vacia):
-.ilike('grado', `%${formData.grado}%${formData.nivel}%`)
-.eq('seccion', formData.seccion || '')
-
-// Despues:
-let gradoBuscado: string;
-if (formData.nivel === 'Inicial') {
-  gradoBuscado = `${formData.grado} años`;
-} else {
-  gradoBuscado = `${formData.grado}° ${formData.nivel}`;
-}
-
-let query = supabase
-  .from('grupos')
-  .select('id, nombre, grado, seccion')
-  .eq('grado', gradoBuscado);
-
+// Logica actual (falla si la seccion no existe):
 if (formData.seccion) {
-  query = query.eq('seccion', formData.seccion);
+  grupoQuery = grupoQuery.eq('seccion', formData.seccion);
+}
+const { data: grupoEncontrado } = await grupoQuery.limit(1).maybeSingle();
+if (!grupoEncontrado) throw new Error(...)
+
+// Nueva logica con fallback:
+if (formData.seccion) {
+  grupoQuery = grupoQuery.eq('seccion', formData.seccion);
+}
+let { data: grupoEncontrado } = await grupoQuery.limit(1).maybeSingle();
+
+// Fallback: si no encuentra con seccion exacta, buscar solo por grado
+if (!grupoEncontrado && formData.seccion) {
+  const { data: grupoFallback } = await supabase
+    .from('grupos')
+    .select('id, nombre, grado, seccion')
+    .eq('grado', gradoBuscado)
+    .limit(1)
+    .maybeSingle();
+  grupoEncontrado = grupoFallback;
 }
 
-const { data: grupoEncontrado } = await query.limit(1).maybeSingle();
+if (!grupoEncontrado) {
+  throw new Error('No se encontro un grupo...');
+}
 ```
 
-### Caso especial: Nivel Inicial
-
-Los grupos de Inicial tienen grado como "3 anos", "4 anos", "5 anos" (sin el simbolo de grado), asi que se maneja por separado.
+Esto asegura que siempre se encuentre un grupo del grado correcto, independientemente de si la seccion especifica existe o no en la base de datos.
 
 ### Archivos modificados
 
-Solo `src/pages/profesor/GenerarClase.tsx` -- un bloque de ~15 lineas.
+Solo `src/pages/profesor/GenerarClase.tsx` -- un bloque de ~10 lineas adicionales.
